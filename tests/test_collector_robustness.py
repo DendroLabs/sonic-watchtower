@@ -146,7 +146,7 @@ class TestInterfaceStateRobustness:
     def test_missing_fields_use_defaults(self) -> None:
         """PORT_TABLE exists but is missing some expected fields."""
         appl = _make_reader({"PORT_TABLE:Ethernet0": {"admin_status": "up"}})
-        state = _make_reader({"PORT_TABLE|Ethernet0": {"oper_status": "up"}})
+        state = _make_reader({"PORT_TABLE|Ethernet0": {"netdev_oper_status": "up"}})
         collector = InterfaceStateCollector(
             readers={RedisReader.APPL_DB: appl, RedisReader.STATE_DB: state}
         )

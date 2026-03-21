@@ -37,7 +37,9 @@ class InterfaceStateCollector(BaseCollector):
 
             result[port_name] = {
                 "admin_status": appl_data.get("admin_status", "unknown"),
-                "oper_status": state_data.get("oper_status", "unknown"),
+                "oper_status": appl_data.get(
+                    "oper_status", state_data.get("netdev_oper_status", "unknown")
+                ),
                 "speed": appl_data.get("speed", "0"),
                 "mtu": appl_data.get("mtu", "0"),
                 "alias": appl_data.get("alias", ""),

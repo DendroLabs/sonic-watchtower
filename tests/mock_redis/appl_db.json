@@ -35,6 +35,7 @@
   },
   "PORT_TABLE:Ethernet0": {
     "admin_status": "up",
+    "oper_status": "up",
     "speed": "100000",
     "mtu": "9100",
     "alias": "fortyGigE0/0",
@@ -42,6 +43,7 @@
   },
   "PORT_TABLE:Ethernet48": {
     "admin_status": "up",
+    "oper_status": "up",
     "speed": "100000",
     "mtu": "9100",
     "alias": "fortyGigE0/48",

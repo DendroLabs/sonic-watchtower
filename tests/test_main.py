@@ -120,9 +120,9 @@ class TestPollCycle:
         """Should detect link state change between cycles."""
         daemon.run_once()
 
-        # Simulate link going down
-        state_reader = mock_readers[RedisReader.STATE_DB]
-        state_reader._client.hset("PORT_TABLE|Ethernet0", "oper_status", "down")
+        # Simulate link going down — oper_status lives in APPL_DB on real SONiC
+        appl_reader = mock_readers[RedisReader.APPL_DB]
+        appl_reader._client.hset("PORT_TABLE:Ethernet0", "oper_status", "down")
 
         daemon.run_once()
 
