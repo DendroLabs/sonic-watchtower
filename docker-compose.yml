@@ -1,0 +1,30 @@
+services:
+  watchtower:
+    build: .
+    container_name: watchtower
+    restart: unless-stopped
+    network_mode: host
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.1"
+          memory: 256M
+    volumes:
+      # Configuration
+      - ./watchtower.yml:/opt/watchtower/watchtower.yml:ro
+      # Persistent journal
+      - watchtower-data:/var/lib/watchtower
+      # Banner output (readable by host)
+      - /var/run/watchtower:/var/run/watchtower
+      # Syslog socket
+      - /dev/log:/dev/log
+      # TLS certificates (if available)
+      - /etc/sonic/credentials:/etc/sonic/credentials:ro
+    environment:
+      - WATCHTOWER_CONFIG=/opt/watchtower/watchtower.yml
+
+volumes:
+  watchtower-data:

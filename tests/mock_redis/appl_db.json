@@ -1,0 +1,58 @@
+{
+  "LLDP_ENTRY_TABLE:Ethernet0": {
+    "lldp_rem_sys_name": "spine-1",
+    "lldp_rem_port_id": "Ethernet0",
+    "lldp_rem_port_desc": "spine-1:Ethernet0",
+    "lldp_rem_chassis_id": "aa:bb:cc:dd:ee:01",
+    "lldp_rem_sys_desc": "SONiC Software Version: 20230531"
+  },
+  "LLDP_ENTRY_TABLE:Ethernet48": {
+    "lldp_rem_sys_name": "switch-b",
+    "lldp_rem_port_id": "Ethernet12",
+    "lldp_rem_port_desc": "switch-b:Ethernet12",
+    "lldp_rem_chassis_id": "aa:bb:cc:dd:ee:02",
+    "lldp_rem_sys_desc": "SONiC Software Version: 20230531"
+  },
+  "BGP_NEIGHBOR_TABLE:10.0.0.1": {
+    "state": "Established",
+    "peerAs": "65001",
+    "localAs": "65000",
+    "peerDesc": "spine-1",
+    "holdTime": "180",
+    "keepAlive": "60",
+    "pfxRcvd": "1500",
+    "upTime": "3600"
+  },
+  "BGP_NEIGHBOR_TABLE:10.0.0.3": {
+    "state": "Idle",
+    "peerAs": "65002",
+    "localAs": "65000",
+    "peerDesc": "spine-2",
+    "holdTime": "180",
+    "keepAlive": "60",
+    "pfxRcvd": "0",
+    "upTime": "0"
+  },
+  "PORT_TABLE:Ethernet0": {
+    "admin_status": "up",
+    "speed": "100000",
+    "mtu": "9100",
+    "alias": "fortyGigE0/0",
+    "description": "uplink to spine-1"
+  },
+  "PORT_TABLE:Ethernet48": {
+    "admin_status": "up",
+    "speed": "100000",
+    "mtu": "9100",
+    "alias": "fortyGigE0/48",
+    "description": "link to switch-b"
+  },
+  "ROUTE_TABLE:10.1.0.0/16": {
+    "nexthop": "10.0.0.1,10.0.0.3",
+    "ifname": "Ethernet0,Ethernet4"
+  },
+  "ROUTE_TABLE:10.2.0.0/16": {
+    "nexthop": "10.0.0.1",
+    "ifname": "Ethernet0"
+  }
+}

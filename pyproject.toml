@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sonic-watchtower"
+version = "0.1.0"
+description = "Distributed read-only network observer for SONiC switches"
+requires-python = ">=3.11"
+dependencies = [
+    "redis>=5.0",
+    "click>=8.1",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.21",
+    "fakeredis>=2.20",
+]
+
+[project.scripts]
+watchtower = "watchtower.cli.main:cli"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

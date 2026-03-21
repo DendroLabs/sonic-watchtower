@@ -1,0 +1,71 @@
+# Watchtower configuration
+# Copy to watchtower.yml and modify as needed.
+
+hostname: auto                  # auto-detect from system
+poll_interval: 30               # seconds between collection cycles
+log_level: info                 # debug, info, warning, critical
+
+# Resource governor
+resources:
+  max_cpu_percent: 20
+  max_memory_mb: 768
+  max_disk_mb: 200
+  throttle_cpu_percent: 15
+  throttle_memory_mb: 600
+  system_cpu_ceiling: 80
+  system_memory_ceiling: 85
+
+# Anomaly detection
+anomaly:
+  deviation_threshold: 5        # flag if current > baseline_p95 * N
+  immediate_threshold: 10       # trigger immediate investigation if > N
+  baseline_warmup_hours: 168    # 1 week before baselines are trusted
+
+# Syslog
+syslog:
+  enabled: true
+  facility: LOG_LOCAL4
+  min_severity: warning
+  include_peer_findings: false
+
+# Banner
+banner:
+  enabled: true
+  max_lines: 20
+  findings_file: /var/run/watchtower/banner.txt
+  show_all_clear: true
+
+# Peer protocol
+peer:
+  enabled: true
+  port: 5950
+  tls:
+    cert: /etc/sonic/credentials/watchtower.crt
+    key: /etc/sonic/credentials/watchtower.key
+    ca: /etc/sonic/credentials/ca.crt
+  verify_hostname: true
+  heartbeat_interval: 10
+  topology_share_interval: 60
+  finding_ttl: 3
+
+# Hierarchy
+hierarchy:
+  role: auto
+  priority: 100
+
+# LLM (Phase 3+)
+llm:
+  enabled: false
+  backend: llama_cpp
+  model_path: /opt/watchtower/models/qwen2-0.5b-q4_k_m.gguf
+  max_tool_calls: 10
+  max_output_tokens: 2000
+  max_concurrent_investigations: 5
+  context_size: 4096
+
+# Journal
+journal:
+  path: /var/lib/watchtower/journal.db
+  retention_detail_days: 7
+  retention_summary_days: 30
+  max_size_mb: 100
