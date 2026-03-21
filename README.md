@@ -2,7 +2,7 @@
 
 **Distributed, read-only network observer for SONiC switches.**
 
-[![CI](https://github.com/YOUR_ORG/sonic-watchtower/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_ORG/sonic-watchtower/actions/workflows/ci.yml)
+[![CI](https://github.com/DendroLabs/sonic-watchtower/actions/workflows/ci.yml/badge.svg)](https://github.com/DendroLabs/sonic-watchtower/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 
@@ -83,7 +83,7 @@ docker exec watchtower watchtower show findings
 ### Local development
 
 ```bash
-git clone https://github.com/YOUR_ORG/sonic-watchtower.git
+git clone https://github.com/DendroLabs/sonic-watchtower.git
 cd sonic-watchtower
 python -m venv .venv
 source .venv/bin/activate

@@ -3,7 +3,7 @@
 ## Development Setup
 
 ```bash
-git clone https://github.com/YOUR_ORG/sonic-watchtower.git
+git clone https://github.com/DendroLabs/sonic-watchtower.git
 cd sonic-watchtower
 python -m venv .venv
 source .venv/bin/activate
