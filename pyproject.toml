@@ -31,6 +31,8 @@ watchtower = "watchtower.cli.main:cli"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = ["sonic_vs: integration tests requiring a running SONiC VS instance"]
+addopts = "-m 'not sonic_vs'"
 
 [tool.ruff]
 target-version = "py311"
