@@ -4,12 +4,11 @@ import pytest
 from click.testing import CliRunner
 
 from watchtower.cli.main import cli
-from watchtower.store.journal import Journal
-from watchtower.store.findings import FindingsStore
-from watchtower.store.events import EventStore
-from watchtower.store.topology import TopologyStore
 from watchtower.store.baselines import BaselineStore
-from watchtower.config import WatchtowerConfig
+from watchtower.store.events import EventStore
+from watchtower.store.findings import FindingsStore
+from watchtower.store.journal import Journal
+from watchtower.store.topology import TopologyStore
 
 
 @pytest.fixture
@@ -25,15 +24,20 @@ def populated_db(tmp_path):
 
     # Add findings
     findings = FindingsStore(journal)
-    findings.create(severity="critical", summary="Optic degradation on Ethernet48.",
-                    finding_id="f-test-001")
-    findings.create(severity="warning", summary="BGP session flapping.",
-                    finding_id="f-test-002")
+    findings.create(
+        severity="critical", summary="Optic degradation on Ethernet48.", finding_id="f-test-001"
+    )
+    findings.create(severity="warning", summary="BGP session flapping.", finding_id="f-test-002")
 
     # Add events
     events = EventStore(journal)
-    events.record(source="local", category="anomaly", severity="warning",
-                  port="Ethernet48", raw_data={"rx_crc_errors": 1847})
+    events.record(
+        source="local",
+        category="anomaly",
+        severity="warning",
+        port="Ethernet48",
+        raw_data={"rx_crc_errors": 1847},
+    )
     events.record(source="local", category="bgp_change", severity="info")
 
     # Add topology
@@ -91,8 +95,9 @@ class TestShowFindings:
         assert "No active findings" in result.output
 
     def test_show_findings_by_severity(self, runner, config_file):
-        result = runner.invoke(cli, ["-c", config_file, "show", "findings",
-                                     "--severity", "critical"])
+        result = runner.invoke(
+            cli, ["-c", config_file, "show", "findings", "--severity", "critical"]
+        )
         assert result.exit_code == 0
         assert "Optic degradation" in result.output
 
@@ -123,8 +128,7 @@ class TestShowEvents:
         assert "bgp_change" in result.output
 
     def test_show_events_by_severity(self, runner, config_file):
-        result = runner.invoke(cli, ["-c", config_file, "show", "events",
-                                     "--severity", "warning"])
+        result = runner.invoke(cli, ["-c", config_file, "show", "events", "--severity", "warning"])
         assert result.exit_code == 0
         assert "anomaly" in result.output
 

@@ -1,14 +1,16 @@
 """Tests for the store layer: journal, baselines, topology, findings, events."""
 
+import sqlite3
 import time
+from datetime import UTC
 
 import pytest
 
-from watchtower.store.journal import Journal
-from watchtower.store.baselines import BaselineStore, _hour_of_week
-from watchtower.store.topology import TopologyStore
-from watchtower.store.findings import FindingsStore
+from watchtower.store.baselines import BaselineStore
 from watchtower.store.events import EventStore
+from watchtower.store.findings import FindingsStore
+from watchtower.store.journal import Journal
+from watchtower.store.topology import TopologyStore
 
 
 @pytest.fixture
@@ -40,6 +42,7 @@ def events(journal):
 
 # --- Journal ---
 
+
 class TestJournal:
     def test_schema_creates_tables(self, journal):
         tables = journal.conn.execute(
@@ -70,6 +73,7 @@ class TestJournal:
 
 # --- Baselines ---
 
+
 class TestBaselines:
     def test_get_nonexistent_returns_none(self, baselines):
         assert baselines.get("Ethernet0", "rx_bytes", 0) is None
@@ -99,13 +103,14 @@ class TestBaselines:
         assert result["p50"] > 100.0  # should have moved toward 200
 
     def test_hour_of_week_bucketing(self, baselines):
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         # Monday 3 AM = hour 3
-        dt_mon = datetime(2026, 3, 16, 3, 0, tzinfo=timezone.utc)  # Monday
+        dt_mon = datetime(2026, 3, 16, 3, 0, tzinfo=UTC)  # Monday
         baselines.update("Ethernet0", "rx_bytes", 1000.0, dt=dt_mon)
 
         # Wednesday 15:00 = hour 2*24+15 = 63
-        dt_wed = datetime(2026, 3, 18, 15, 0, tzinfo=timezone.utc)  # Wednesday
+        dt_wed = datetime(2026, 3, 18, 15, 0, tzinfo=UTC)  # Wednesday
         baselines.update("Ethernet0", "rx_bytes", 5000.0, dt=dt_wed)
 
         mon_result = baselines.get("Ethernet0", "rx_bytes", hour=3)
@@ -138,6 +143,7 @@ class TestBaselines:
 
 
 # --- Topology ---
+
 
 class TestTopology:
     def test_add_and_get_neighbor(self, topology):
@@ -186,6 +192,7 @@ class TestTopology:
 
 # --- Findings ---
 
+
 class TestFindings:
     def test_create_and_get(self, findings):
         fid = findings.create(
@@ -212,7 +219,9 @@ class TestFindings:
         assert findings.get("f-nonexistent") is None
 
     def test_resolve(self, findings):
-        fid = findings.create(severity="critical", summary="Critical issue", finding_id="f-test-002")
+        fid = findings.create(
+            severity="critical", summary="Critical issue", finding_id="f-test-002"
+        )
         findings.resolve(fid)
 
         result = findings.get(fid)
@@ -240,7 +249,9 @@ class TestFindings:
         assert critical[0]["severity"] == "critical"
 
     def test_resolved_not_in_active(self, findings):
-        fid = findings.create(severity="warning", summary="Will resolve", finding_id="f-resolve-001")
+        fid = findings.create(
+            severity="warning", summary="Will resolve", finding_id="f-resolve-001"
+        )
         findings.resolve(fid)
 
         active = findings.get_active()
@@ -270,6 +281,7 @@ class TestFindings:
 
 # --- Events ---
 
+
 class TestEvents:
     def test_record_and_get_recent(self, events):
         eid = events.record(
@@ -287,7 +299,7 @@ class TestEvents:
         assert recent[0]["raw_data"]["rx_crc_errors"] == 1847
 
     def test_record_without_port(self, events):
-        eid = events.record(source="syslog", category="bgp_change", severity="info")
+        events.record(source="syslog", category="bgp_change", severity="info")
         recent = events.get_recent(seconds=60)
         assert len(recent) == 1
         assert recent[0]["port"] is None
@@ -321,5 +333,5 @@ class TestEvents:
 
     def test_source_validation(self, events):
         """Only local, peer, syslog are valid sources."""
-        with pytest.raises(Exception):
+        with pytest.raises(sqlite3.IntegrityError):
             events.record(source="invalid", category="test", severity="info")

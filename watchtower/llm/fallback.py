@@ -44,7 +44,7 @@ def finding_from_anomaly(result: AnomalyResult, neighbor_info: dict | None = Non
         f"Port {result.port} {metric_label} is at {result.current_value:.0f}, "
         f"which is {result.deviation_factor:.1f}x the p95 baseline of {result.baseline_p95:.1f}. "
         f"Baseline p50: {result.baseline_p50:.1f}, p99: {result.baseline_p99:.1f}. "
-        f"{'Baseline is warmed up.' if result.warmed_up else 'Baseline is still warming up -- confidence is lower.'}"
+        f"{'Warmed up.' if result.warmed_up else 'Still warming up -- confidence is lower.'}"
     )
 
     return {
@@ -54,8 +54,9 @@ def finding_from_anomaly(result: AnomalyResult, neighbor_info: dict | None = Non
     }
 
 
-def finding_from_bgp_change(neighbor_ip: str, old_state: str, new_state: str,
-                             description: str = "") -> dict:
+def finding_from_bgp_change(
+    neighbor_ip: str, old_state: str, new_state: str, description: str = ""
+) -> dict:
     """Generate a finding for a BGP session state change."""
     desc_str = f" ({description})" if description else ""
 
@@ -72,8 +73,7 @@ def finding_from_bgp_change(neighbor_ip: str, old_state: str, new_state: str,
     return {"severity": severity, "summary": summary, "detail": summary}
 
 
-def finding_from_link_change(port: str, new_state: str,
-                              neighbor_info: dict | None = None) -> dict:
+def finding_from_link_change(port: str, new_state: str, neighbor_info: dict | None = None) -> dict:
     """Generate a finding for a link state change."""
     neighbor_str = ""
     if neighbor_info:
@@ -90,9 +90,12 @@ def finding_from_link_change(port: str, new_state: str,
     return {"severity": severity, "summary": summary, "detail": summary}
 
 
-def finding_from_optic_degradation(port: str, rx_power_avg: float,
-                                    baseline_rx_power: float | None = None,
-                                    neighbor_info: dict | None = None) -> dict:
+def finding_from_optic_degradation(
+    port: str,
+    rx_power_avg: float,
+    baseline_rx_power: float | None = None,
+    neighbor_info: dict | None = None,
+) -> dict:
     """Generate a finding for optic power degradation."""
     neighbor_str = ""
     if neighbor_info:

@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import click
 
 from watchtower.config import load_config
-from watchtower.store.journal import Journal
-from watchtower.store.findings import FindingsStore
-from watchtower.store.events import EventStore
-from watchtower.store.topology import TopologyStore
-from watchtower.store.baselines import BaselineStore
 from watchtower.governor import ResourceGovernor
+from watchtower.store.baselines import BaselineStore
+from watchtower.store.events import EventStore
+from watchtower.store.findings import FindingsStore
+from watchtower.store.journal import Journal
+from watchtower.store.topology import TopologyStore
 
 
 def _get_journal(config_path: str | None) -> Journal:
@@ -27,7 +26,7 @@ def _get_journal(config_path: str | None) -> Journal:
 @click.group()
 @click.option("--config", "-c", default=None, help="Path to watchtower.yml")
 @click.pass_context
-def cli(ctx, config):
+def cli(ctx: click.Context, config: str | None) -> None:
     """Watchtower: Distributed network observer for SONiC switches."""
     ctx.ensure_object(dict)
     ctx.obj["config_path"] = config
@@ -36,7 +35,7 @@ def cli(ctx, config):
 
 @cli.group()
 @click.pass_context
-def show(ctx):
+def show(ctx: click.Context) -> None:
     """Show Watchtower status and data."""
     pass
 
@@ -45,7 +44,7 @@ def show(ctx):
 @click.option("--history", is_flag=True, help="Show resolved findings from last 7 days")
 @click.option("--severity", type=click.Choice(["info", "warning", "critical"]), default=None)
 @click.pass_context
-def findings(ctx, history, severity):
+def findings(ctx: click.Context, history: bool, severity: str | None) -> None:
     """Show active or historical findings."""
     config = ctx.obj["config"]
     journal = Journal(config.journal.path)
@@ -67,9 +66,11 @@ def findings(ctx, history, severity):
             return
 
         counts = store.count_active()
-        click.echo(f"Active findings: {counts['total']} "
-                   f"({counts['critical']} critical, {counts['warning']} warning, "
-                   f"{counts['info']} info)\n")
+        click.echo(
+            f"Active findings: {counts['total']} "
+            f"({counts['critical']} critical, {counts['warning']} warning, "
+            f"{counts['info']} info)\n"
+        )
         for f in items:
             click.echo(f"  [{f['severity'].upper():8s}] {f['summary']}")
             click.echo(f"             ID: {f['finding_id']}  Time: {f['timestamp']}")
@@ -83,7 +84,7 @@ def findings(ctx, history, severity):
 @show.command()
 @click.option("--fabric", is_flag=True, help="Include peer topology data")
 @click.pass_context
-def topology(ctx, fabric):
+def topology(ctx: click.Context, fabric: bool) -> None:
     """Show current LLDP topology."""
     config = ctx.obj["config"]
     journal = Journal(config.journal.path)
@@ -97,7 +98,7 @@ def topology(ctx, fabric):
 
     click.echo(f"Local topology ({len(entries)} neighbors):\n")
     click.echo(f"  {'Local Port':<16s} {'Neighbor':<20s} {'Remote Port':<16s} {'Last Seen'}")
-    click.echo(f"  {'-'*15:<16s} {'-'*19:<20s} {'-'*15:<16s} {'-'*19}")
+    click.echo(f"  {'-' * 15:<16s} {'-' * 19:<20s} {'-' * 15:<16s} {'-' * 19}")
     for e in entries:
         click.echo(
             f"  {e['local_port']:<16s} {e['neighbor_hostname']:<20s} "
@@ -111,7 +112,7 @@ def topology(ctx, fabric):
 @click.option("--last", "seconds", default=3600, help="Show events from last N seconds")
 @click.option("--severity", type=click.Choice(["info", "warning", "critical"]), default=None)
 @click.pass_context
-def events(ctx, seconds, severity):
+def events(ctx: click.Context, seconds: int, severity: str | None) -> None:
     """Show recent events from the journal."""
     config = ctx.obj["config"]
     journal = Journal(config.journal.path)
@@ -124,21 +125,25 @@ def events(ctx, seconds, severity):
         return
 
     counts = store.count_recent(seconds=seconds)
-    click.echo(f"Events in last {seconds}s: {counts['total']} "
-               f"({counts['critical']} critical, {counts['warning']} warning, "
-               f"{counts['info']} info)\n")
+    click.echo(
+        f"Events in last {seconds}s: {counts['total']} "
+        f"({counts['critical']} critical, {counts['warning']} warning, "
+        f"{counts['info']} info)\n"
+    )
 
     for e in items:
         port_str = f" port={e['port']}" if e.get("port") else ""
-        click.echo(f"  [{e['severity'].upper():8s}] {e['timestamp']} "
-                   f"{e['category']}{port_str} ({e['source']})")
+        click.echo(
+            f"  [{e['severity'].upper():8s}] {e['timestamp']} "
+            f"{e['category']}{port_str} ({e['source']})"
+        )
 
     journal.close()
 
 
 @show.command()
 @click.pass_context
-def resources(ctx):
+def resources(ctx: click.Context) -> None:
     """Show current resource usage and governor state."""
     governor = ResourceGovernor(ctx.obj["config"].resources)
     governor.update()
@@ -157,7 +162,7 @@ def resources(ctx):
 @show.command()
 @click.argument("port")
 @click.pass_context
-def baselines(ctx, port):
+def baselines(ctx: click.Context, port: str) -> None:
     """Show baseline statistics for a port."""
     config = ctx.obj["config"]
     journal = Journal(config.journal.path)

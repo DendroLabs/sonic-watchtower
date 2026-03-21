@@ -9,12 +9,12 @@ import fakeredis
 import pytest
 
 from watchtower.collectors.base import RedisReader
-from watchtower.collectors.port_stats import PortStatsCollector
+from watchtower.collectors.bgp_state import BGPStateCollector
 from watchtower.collectors.interface_state import InterfaceStateCollector
 from watchtower.collectors.lldp_topology import LLDPTopologyCollector
-from watchtower.collectors.bgp_state import BGPStateCollector
-from watchtower.collectors.optic_health import OpticHealthCollector
 from watchtower.collectors.log_filter import LogFilterCollector
+from watchtower.collectors.optic_health import OpticHealthCollector
+from watchtower.collectors.port_stats import PortStatsCollector
 
 MOCK_DIR = Path(__file__).parent / "mock_redis"
 
@@ -56,6 +56,7 @@ def state_reader():
 
 # --- PortStatsCollector ---
 
+
 class TestPortStatsCollector:
     def test_collect_all_ports(self, counters_reader):
         collector = PortStatsCollector(readers={RedisReader.COUNTERS_DB: counters_reader})
@@ -91,12 +92,15 @@ class TestPortStatsCollector:
 
 # --- InterfaceStateCollector ---
 
+
 class TestInterfaceStateCollector:
     def test_collect_all(self, appl_reader, state_reader):
-        collector = InterfaceStateCollector(readers={
-            RedisReader.APPL_DB: appl_reader,
-            RedisReader.STATE_DB: state_reader,
-        })
+        collector = InterfaceStateCollector(
+            readers={
+                RedisReader.APPL_DB: appl_reader,
+                RedisReader.STATE_DB: state_reader,
+            }
+        )
         result = collector.collect()
 
         assert "Ethernet0" in result
@@ -105,10 +109,12 @@ class TestInterfaceStateCollector:
         assert result["Ethernet0"]["speed"] == "100000"
 
     def test_collect_single_port(self, appl_reader, state_reader):
-        collector = InterfaceStateCollector(readers={
-            RedisReader.APPL_DB: appl_reader,
-            RedisReader.STATE_DB: state_reader,
-        })
+        collector = InterfaceStateCollector(
+            readers={
+                RedisReader.APPL_DB: appl_reader,
+                RedisReader.STATE_DB: state_reader,
+            }
+        )
         result = collector.collect(port="Ethernet48")
 
         assert "Ethernet48" in result
@@ -116,6 +122,7 @@ class TestInterfaceStateCollector:
 
 
 # --- LLDPTopologyCollector ---
+
 
 class TestLLDPTopologyCollector:
     def test_collect_all(self, appl_reader):
@@ -146,6 +153,7 @@ class TestLLDPTopologyCollector:
 
 # --- BGPStateCollector ---
 
+
 class TestBGPStateCollector:
     def test_collect_all(self, appl_reader):
         collector = BGPStateCollector(readers={RedisReader.APPL_DB: appl_reader})
@@ -174,6 +182,7 @@ class TestBGPStateCollector:
 
 # --- OpticHealthCollector ---
 
+
 class TestOpticHealthCollector:
     def test_collect_all(self, state_reader):
         collector = OpticHealthCollector(readers={RedisReader.STATE_DB: state_reader})
@@ -190,7 +199,7 @@ class TestOpticHealthCollector:
 
         eth48 = result["Ethernet48"]
         assert eth48["rx_power_avg_dbm"] < -7.0  # degraded
-        assert eth48["tx_power_avg_dbm"] > -2.0   # TX is fine
+        assert eth48["tx_power_avg_dbm"] > -2.0  # TX is fine
         assert eth48["temperature"] == 45.2
         assert eth48["vendor"] == "Finisar"
 
@@ -204,6 +213,7 @@ class TestOpticHealthCollector:
 
 
 # --- LogFilterCollector ---
+
 
 class TestLogFilterCollector:
     def test_collect_from_file(self, tmp_path):
@@ -220,11 +230,11 @@ class TestLogFilterCollector:
 
         # CRON and systemd lines should be filtered as noise
         lines = [r["line"] for r in result]
-        assert not any("CRON" in l for l in lines)
-        assert not any("Started Session" in l for l in lines)
+        assert not any("CRON" in line for line in lines)
+        assert not any("Started Session" in line for line in lines)
 
         # orchagent and bgp lines should remain and be interesting
-        assert any("orchagent" in l for l in lines)
+        assert any("orchagent" in line for line in lines)
         interesting = [r for r in result if r["interesting"]]
         assert len(interesting) >= 2
 

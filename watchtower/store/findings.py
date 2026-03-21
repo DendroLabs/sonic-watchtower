@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import itertools
-from datetime import datetime, timezone
+import json
+from datetime import UTC, datetime
 
 from watchtower.store.journal import Journal
 
@@ -12,12 +12,12 @@ _counter = itertools.count(1)
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _generate_finding_id() -> str:
     """Generate a unique finding ID like f-20260319-0042."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     date_part = now.strftime("%Y%m%d")
     seq = next(_counter)
     return f"f-{date_part}-{seq:04d}"
@@ -52,7 +52,7 @@ class FindingsStore:
         self._journal.conn.commit()
         return finding_id
 
-    def resolve(self, finding_id: str):
+    def resolve(self, finding_id: str) -> None:
         """Mark a finding as resolved."""
         now = _utcnow()
         self._journal.conn.execute(
@@ -108,7 +108,8 @@ class FindingsStore:
     def get_history(self, days: int = 7) -> list[dict]:
         """Get resolved findings from the last N days."""
         from datetime import timedelta
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        cutoff = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
         rows = self._journal.conn.execute(
             "SELECT finding_id, timestamp, severity, summary, detail, "
             "resolved_at FROM findings WHERE active = 0 AND resolved_at >= ? "
@@ -120,8 +121,7 @@ class FindingsStore:
     def count_active(self) -> dict:
         """Count active findings by severity."""
         rows = self._journal.conn.execute(
-            "SELECT severity, COUNT(*) as count FROM findings "
-            "WHERE active = 1 GROUP BY severity"
+            "SELECT severity, COUNT(*) as count FROM findings WHERE active = 1 GROUP BY severity"
         ).fetchall()
         counts = {"critical": 0, "warning": 0, "info": 0}
         for row in rows:

@@ -101,7 +101,7 @@ class WatchtowerConfig:
     llm: LLMConfig = field(default_factory=LLMConfig)
     journal: JournalConfig = field(default_factory=JournalConfig)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.hostname or self.hostname == "auto":
             self.hostname = socket.gethostname()
 

@@ -5,30 +5,33 @@ from __future__ import annotations
 import logging
 import signal
 import time
+import types
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
-from watchtower.config import WatchtowerConfig, load_config
-from watchtower.governor import ResourceGovernor, ResourceSnapshot
-from watchtower.store.journal import Journal
-from watchtower.store.baselines import BaselineStore
-from watchtower.store.events import EventStore
-from watchtower.store.findings import FindingsStore
-from watchtower.store.topology import TopologyStore
+from watchtower.analyzers.baseline_compare import AnomalyResult, BaselineCompareAnalyzer
 from watchtower.collectors.base import RedisReader
-from watchtower.collectors.port_stats import PortStatsCollector
+from watchtower.collectors.bgp_state import BGPStateCollector
 from watchtower.collectors.interface_state import InterfaceStateCollector
 from watchtower.collectors.lldp_topology import LLDPTopologyCollector
-from watchtower.collectors.bgp_state import BGPStateCollector
 from watchtower.collectors.optic_health import OpticHealthCollector
-from watchtower.analyzers.baseline_compare import BaselineCompareAnalyzer
+from watchtower.collectors.port_stats import PortStatsCollector
+from watchtower.config import WatchtowerConfig, load_config
+from watchtower.governor import ResourceGovernor
 from watchtower.llm.fallback import (
     finding_from_anomaly,
     finding_from_bgp_change,
     finding_from_link_change,
     finding_from_optic_degradation,
 )
-from watchtower.output.syslog_emitter import SyslogEmitter
 from watchtower.output.banner import BannerWriter
+from watchtower.output.syslog_emitter import SyslogEmitter
+from watchtower.store.baselines import BaselineStore
+from watchtower.store.events import EventStore
+from watchtower.store.findings import FindingsStore
+from watchtower.store.journal import Journal
+from watchtower.store.topology import TopologyStore
 
 logger = logging.getLogger("watchtower")
 
@@ -78,14 +81,17 @@ class WatchtowerDaemon:
         self._last_bgp_states: dict[str, str] = {}
         self._last_oper_states: dict[str, str] = {}
 
-    def run(self):
+    def run(self) -> None:
         """Run the main event loop."""
         self._running = True
         signal.signal(signal.SIGTERM, self._handle_signal)
         signal.signal(signal.SIGINT, self._handle_signal)
 
-        logger.info("Watchtower starting on %s (poll_interval=%ds)",
-                     self.config.hostname, self.config.poll_interval)
+        logger.info(
+            "Watchtower starting on %s (poll_interval=%ds)",
+            self.config.hostname,
+            self.config.poll_interval,
+        )
 
         while self._running:
             cycle_start = time.time()
@@ -104,11 +110,11 @@ class WatchtowerDaemon:
         logger.info("Watchtower stopped.")
         self.journal.close()
 
-    def run_once(self):
+    def run_once(self) -> None:
         """Run a single poll cycle (useful for testing)."""
         self._poll_cycle()
 
-    def _poll_cycle(self):
+    def _poll_cycle(self) -> None:
         """Execute one complete poll-detect-report cycle."""
         # Update governor state
         self.governor.update()
@@ -164,7 +170,9 @@ class WatchtowerDaemon:
             summary_days=self.config.journal.retention_summary_days,
         )
 
-    def _handle_anomaly(self, anomaly, neighbor_info: dict | None):
+    def _handle_anomaly(
+        self, anomaly: AnomalyResult, neighbor_info: dict[str, Any] | None
+    ) -> None:
         """Record an anomaly event and generate a template finding."""
         event_id = self.events.record(
             source="local",
@@ -182,13 +190,12 @@ class WatchtowerDaemon:
                 detail=finding_data["detail"],
                 related_events=[event_id],
             )
-            self.syslog.emit_finding(finding_id, finding_data["severity"],
-                                     finding_data["summary"])
+            self.syslog.emit_finding(finding_id, finding_data["severity"], finding_data["summary"])
             logger.info("Finding %s: %s", finding_id, finding_data["summary"])
         else:
             self.governor.defer_investigation()
 
-    def _check_bgp_changes(self, bgp_data: dict):
+    def _check_bgp_changes(self, bgp_data: dict[str, Any]) -> None:
         """Detect BGP session state changes."""
         for neighbor_ip, session in bgp_data.items():
             new_state = session["state"]
@@ -196,15 +203,20 @@ class WatchtowerDaemon:
 
             if old_state is not None and old_state != new_state:
                 finding_data = finding_from_bgp_change(
-                    neighbor_ip, old_state, new_state,
+                    neighbor_ip,
+                    old_state,
+                    new_state,
                     description=session.get("description", ""),
                 )
                 event_id = self.events.record(
                     source="local",
                     category="bgp_change",
                     severity=finding_data["severity"],
-                    raw_data={"neighbor": neighbor_ip, "old_state": old_state,
-                              "new_state": new_state},
+                    raw_data={
+                        "neighbor": neighbor_ip,
+                        "old_state": old_state,
+                        "new_state": new_state,
+                    },
                 )
                 finding_id = self.findings.create(
                     severity=finding_data["severity"],
@@ -212,12 +224,15 @@ class WatchtowerDaemon:
                     detail=finding_data["detail"],
                     related_events=[event_id],
                 )
-                self.syslog.emit_finding(finding_id, finding_data["severity"],
-                                         finding_data["summary"])
+                self.syslog.emit_finding(
+                    finding_id, finding_data["severity"], finding_data["summary"]
+                )
 
             self._last_bgp_states[neighbor_ip] = new_state
 
-    def _check_link_changes(self, iface_state: dict, lldp_data: dict | None):
+    def _check_link_changes(
+        self, iface_state: dict[str, Any], lldp_data: dict[str, Any] | None
+    ) -> None:
         """Detect link operational state changes."""
         for port_name, state in iface_state.items():
             new_oper = state["oper_status"]
@@ -239,12 +254,15 @@ class WatchtowerDaemon:
                     detail=finding_data["detail"],
                     related_events=[event_id],
                 )
-                self.syslog.emit_finding(finding_id, finding_data["severity"],
-                                         finding_data["summary"])
+                self.syslog.emit_finding(
+                    finding_id, finding_data["severity"], finding_data["summary"]
+                )
 
             self._last_oper_states[port_name] = new_oper
 
-    def _check_optic_health(self, optic_data: dict, lldp_data: dict | None):
+    def _check_optic_health(
+        self, optic_data: dict[str, Any], lldp_data: dict[str, Any] | None
+    ) -> None:
         """Check for optic power degradation."""
         for port_name, optic in optic_data.items():
             rx_avg = optic.get("rx_power_avg_dbm", 0.0)
@@ -255,7 +273,8 @@ class WatchtowerDaemon:
                 baseline_rx = baseline["p50"] if baseline else None
 
                 finding_data = finding_from_optic_degradation(
-                    port_name, rx_avg,
+                    port_name,
+                    rx_avg,
                     baseline_rx_power=baseline_rx,
                     neighbor_info=neighbor,
                 )
@@ -271,11 +290,12 @@ class WatchtowerDaemon:
                     summary=finding_data["summary"],
                     detail=finding_data["detail"],
                 )
-                self.syslog.emit_finding(finding_id, finding_data["severity"],
-                                         finding_data["summary"])
+                self.syslog.emit_finding(
+                    finding_id, finding_data["severity"], finding_data["summary"]
+                )
 
     @staticmethod
-    def _safe_collect(collect_fn, **kwargs):
+    def _safe_collect(collect_fn: Callable[..., Any], **kwargs: Any) -> Any:
         """Call a collector, returning empty dict/list on error."""
         try:
             return collect_fn(**kwargs)
@@ -283,12 +303,12 @@ class WatchtowerDaemon:
             logger.exception("Collector error")
             return {}
 
-    def _handle_signal(self, signum, frame):
+    def _handle_signal(self, signum: int, frame: types.FrameType | None) -> None:
         logger.info("Received signal %d, shutting down...", signum)
         self._running = False
 
 
-def main():
+def main() -> None:
     """CLI entry point for running the daemon."""
     import sys
 

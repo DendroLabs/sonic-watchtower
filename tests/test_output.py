@@ -1,13 +1,11 @@
 """Tests for syslog emitter and login banner."""
 
-import pytest
-
-from watchtower.output.syslog_emitter import SyslogEmitter
+from watchtower.config import BannerConfig, SyslogConfig
 from watchtower.output.banner import BannerWriter
-from watchtower.config import SyslogConfig, BannerConfig
-
+from watchtower.output.syslog_emitter import SyslogEmitter
 
 # --- SyslogEmitter ---
+
 
 class TestSyslogEmitter:
     def test_emit_finding_dry_run(self):
@@ -56,6 +54,7 @@ class TestSyslogEmitter:
 
 # --- BannerWriter ---
 
+
 class TestBannerWriter:
     def test_write_all_clear(self, tmp_path):
         banner_file = tmp_path / "banner.txt"
@@ -81,10 +80,14 @@ class TestBannerWriter:
         config = BannerConfig(findings_file=str(banner_file))
         writer = BannerWriter(config)
 
-        writer.write([{
-            "severity": "critical",
-            "summary": "Optic degradation on Ethernet48 (link to spine-3).",
-        }])
+        writer.write(
+            [
+                {
+                    "severity": "critical",
+                    "summary": "Optic degradation on Ethernet48 (link to spine-3).",
+                }
+            ]
+        )
 
         content = banner_file.read_text()
         assert "1 active finding" in content
@@ -98,11 +101,13 @@ class TestBannerWriter:
         config = BannerConfig(findings_file=str(banner_file))
         writer = BannerWriter(config)
 
-        writer.write([
-            {"severity": "critical", "summary": "Critical issue on Ethernet48."},
-            {"severity": "warning", "summary": "BGP session flapping."},
-            {"severity": "info", "summary": "New LLDP neighbor detected."},
-        ])
+        writer.write(
+            [
+                {"severity": "critical", "summary": "Critical issue on Ethernet48."},
+                {"severity": "warning", "summary": "BGP session flapping."},
+                {"severity": "info", "summary": "New LLDP neighbor detected."},
+            ]
+        )
 
         content = banner_file.read_text()
         assert "3 active findings" in content
@@ -117,8 +122,7 @@ class TestBannerWriter:
 
         # Create many findings
         findings = [
-            {"severity": "warning", "summary": f"Warning issue number {i}."}
-            for i in range(20)
+            {"severity": "warning", "summary": f"Warning issue number {i}."} for i in range(20)
         ]
         writer.write(findings)
 

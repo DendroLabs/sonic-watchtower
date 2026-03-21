@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class Journal:
@@ -24,7 +24,7 @@ class Journal:
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._init_schema()
 
-    def _init_schema(self):
+    def _init_schema(self) -> None:
         schema = _SCHEMA_PATH.read_text()
         self._conn.executescript(schema)
 
@@ -32,12 +32,12 @@ class Journal:
     def conn(self) -> sqlite3.Connection:
         return self._conn
 
-    def close(self):
+    def close(self) -> None:
         self._conn.close()
 
-    def prune(self, detail_days: int = 7, summary_days: int = 30):
+    def prune(self, detail_days: int = 7, summary_days: int = 30) -> None:
         """Remove old events and resolved findings."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         detail_cutoff = (now - timedelta(days=detail_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
         summary_cutoff = (now - timedelta(days=summary_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 

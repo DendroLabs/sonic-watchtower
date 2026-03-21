@@ -11,15 +11,16 @@ from watchtower.config import ResourceConfig
 
 
 class GovernorState(enum.Enum):
-    FULL = "full"            # normal operation
+    FULL = "full"  # normal operation
     THROTTLED = "throttled"  # reduced frequency, limited investigations
-    PAUSED = "paused"        # LLM paused, minimum collectors only
-    DORMANT = "dormant"      # fully dormant, heartbeat only
+    PAUSED = "paused"  # LLM paused, minimum collectors only
+    DORMANT = "dormant"  # fully dormant, heartbeat only
 
 
 @dataclass
 class ResourceSnapshot:
     """Current resource usage snapshot."""
+
     watchtower_cpu_percent: float = 0.0
     watchtower_memory_mb: float = 0.0
     system_cpu_percent: float = 0.0
@@ -67,11 +68,11 @@ class ResourceGovernor:
         """Whether the governor allows running collectors."""
         return self._state != GovernorState.DORMANT
 
-    def defer_investigation(self):
+    def defer_investigation(self) -> None:
         """Record that an investigation was deferred due to resource pressure."""
         self._investigations_deferred += 1
 
-    def update(self, snapshot: ResourceSnapshot | None = None):
+    def update(self, snapshot: ResourceSnapshot | None = None) -> None:
         """Update governor state based on current resource usage.
 
         If no snapshot is provided, reads from /proc (Linux) or

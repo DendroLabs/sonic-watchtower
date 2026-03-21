@@ -3,7 +3,6 @@
 import socket
 
 import yaml
-import pytest
 
 from watchtower.config import WatchtowerConfig, load_config
 
@@ -51,10 +50,14 @@ class TestLoadConfig:
 
     def test_load_partial_override(self, tmp_path):
         cfg_file = tmp_path / "watchtower.yml"
-        cfg_file.write_text(yaml.dump({
-            "poll_interval": 60,
-            "resources": {"max_cpu_percent": 10},
-        }))
+        cfg_file.write_text(
+            yaml.dump(
+                {
+                    "poll_interval": 60,
+                    "resources": {"max_cpu_percent": 10},
+                }
+            )
+        )
         config = load_config(cfg_file)
         assert config.poll_interval == 60
         assert config.resources.max_cpu_percent == 10.0
@@ -64,9 +67,13 @@ class TestLoadConfig:
 
     def test_load_nested_override(self, tmp_path):
         cfg_file = tmp_path / "watchtower.yml"
-        cfg_file.write_text(yaml.dump({
-            "syslog": {"min_severity": "critical", "enabled": False},
-        }))
+        cfg_file.write_text(
+            yaml.dump(
+                {
+                    "syslog": {"min_severity": "critical", "enabled": False},
+                }
+            )
+        )
         config = load_config(cfg_file)
         assert config.syslog.min_severity == "critical"
         assert config.syslog.enabled is False
@@ -74,10 +81,14 @@ class TestLoadConfig:
 
     def test_load_ignores_unknown_keys(self, tmp_path):
         cfg_file = tmp_path / "watchtower.yml"
-        cfg_file.write_text(yaml.dump({
-            "unknown_key": "value",
-            "poll_interval": 45,
-        }))
+        cfg_file.write_text(
+            yaml.dump(
+                {
+                    "unknown_key": "value",
+                    "poll_interval": 45,
+                }
+            )
+        )
         config = load_config(cfg_file)
         assert config.poll_interval == 45
         assert not hasattr(config, "unknown_key")
@@ -91,6 +102,7 @@ class TestLoadConfig:
     def test_load_full_example(self):
         """Ensure the example config file parses without error."""
         from pathlib import Path
+
         example = Path(__file__).parent.parent / "watchtower.yml.example"
         if example.exists():
             config = load_config(example)

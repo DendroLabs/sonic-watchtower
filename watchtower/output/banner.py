@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from watchtower.config import BannerConfig
@@ -15,7 +14,7 @@ class BannerWriter:
     def __init__(self, config: BannerConfig | None = None):
         self._config = config or BannerConfig()
 
-    def write(self, findings: list[dict]):
+    def write(self, findings: list[dict]) -> None:
         """Write the banner file with the given active findings.
 
         Args:
@@ -33,7 +32,7 @@ class BannerWriter:
 
     def _format(self, findings: list[dict]) -> str:
         """Format findings into the banner text."""
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
         if not findings:
             if self._config.show_all_clear:
@@ -71,7 +70,9 @@ class BannerWriter:
             if used_lines >= max_finding_lines:
                 remaining = total - shown
                 if remaining > 0:
-                    lines.append(f" ... and {remaining} more finding{'s' if remaining != 1 else ''}")
+                    lines.append(
+                        f" ... and {remaining} more finding{'s' if remaining != 1 else ''}"
+                    )
                 break
 
             sev = f.get("severity", "info").upper()
@@ -82,19 +83,23 @@ class BannerWriter:
             if used_lines + len(finding_lines) + 1 > max_finding_lines:
                 remaining = total - shown
                 if remaining > 0:
-                    lines.append(f" ... and {remaining} more finding{'s' if remaining != 1 else ''}")
+                    lines.append(
+                        f" ... and {remaining} more finding{'s' if remaining != 1 else ''}"
+                    )
                 break
 
             lines.append("")  # blank line before finding
             lines.extend(finding_lines)
             used_lines += len(finding_lines) + 1
-            shown += 1
+            shown += 1  # noqa: SIM113
 
         lines.append("=" * 56)
         return "\n".join(lines) + "\n"
 
     @staticmethod
-    def _wrap_finding(severity: str, summary: str, width: int = 52, max_lines: int = 3) -> list[str]:
+    def _wrap_finding(
+        severity: str, summary: str, width: int = 52, max_lines: int = 3
+    ) -> list[str]:
         """Wrap a finding into indented lines for the banner."""
         prefix = f" [{severity}] "
         indent = "   "
@@ -102,7 +107,7 @@ class BannerWriter:
         rest_width = width - len(indent)
 
         words = summary.split()
-        lines = []
+        lines: list[str] = []
         current = ""
 
         for word in words:

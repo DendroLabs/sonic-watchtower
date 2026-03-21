@@ -1,11 +1,12 @@
-"""Baseline comparison analyzer -- detects anomalies by comparing current values against baselines."""
+"""Baseline comparison analyzer -- detects anomalies by comparing current values
+against baselines."""
 
 from __future__ import annotations
 
 from watchtower.analyzers.base import BaseAnalyzer
+from watchtower.config import AnomalyConfig
 from watchtower.store.baselines import BaselineStore
 from watchtower.store.journal import Journal
-from watchtower.config import AnomalyConfig
 
 
 class AnomalyResult:
@@ -65,7 +66,8 @@ class BaselineCompareAnalyzer(BaseAnalyzer):
         """
         baseline = self._baselines.get(port, metric)
         warmed_up = self._baselines.is_warmed_up(
-            port, metric,
+            port,
+            metric,
             min_samples=self._config.baseline_warmup_hours,
         )
 
@@ -94,14 +96,8 @@ class BaselineCompareAnalyzer(BaseAnalyzer):
         else:
             deviation_factor = 0.0
 
-        is_anomaly = (
-            warmed_up
-            and deviation_factor >= self._config.deviation_threshold
-        )
-        is_immediate = (
-            warmed_up
-            and deviation_factor >= self._config.immediate_threshold
-        )
+        is_anomaly = warmed_up and deviation_factor >= self._config.deviation_threshold
+        is_immediate = warmed_up and deviation_factor >= self._config.immediate_threshold
 
         return AnomalyResult(
             port=port,

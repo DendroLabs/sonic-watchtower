@@ -26,7 +26,7 @@ class RedisReader:
         self._client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
 
     @classmethod
-    def from_client(cls, client: redis.Redis) -> "RedisReader":
+    def from_client(cls, client: redis.Redis) -> RedisReader:
         """Create a RedisReader from an existing Redis client (useful for testing)."""
         reader = cls.__new__(cls)
         reader._client = client
@@ -62,6 +62,6 @@ class BaseCollector(ABC):
         return self._readers[db]
 
     @abstractmethod
-    def collect(self, **kwargs) -> dict | list:
+    def collect(self, *args: Any, **kwargs: Any) -> Any:
         """Collect data and return structured results."""
         ...

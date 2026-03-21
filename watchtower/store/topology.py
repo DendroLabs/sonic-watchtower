@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from watchtower.store.journal import Journal
 
@@ -13,15 +13,16 @@ class TopologyStore:
     def __init__(self, journal: Journal):
         self._journal = journal
 
-    def update_neighbor(self, local_port: str, neighbor_hostname: str, neighbor_port: str):
+    def update_neighbor(self, local_port: str, neighbor_hostname: str, neighbor_port: str) -> None:
         """Insert or update a neighbor entry."""
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         self._journal.conn.execute(
-            "INSERT INTO topology (local_port, neighbor_hostname, neighbor_port, last_seen, first_seen) "
-            "VALUES (?, ?, ?, ?, ?) "
-            "ON CONFLICT(local_port, neighbor_hostname, neighbor_port) "
-            "DO UPDATE SET last_seen = ?",
+            "INSERT INTO topology"
+            " (local_port, neighbor_hostname, neighbor_port, last_seen, first_seen)"
+            " VALUES (?, ?, ?, ?, ?)"
+            " ON CONFLICT(local_port, neighbor_hostname, neighbor_port)"
+            " DO UPDATE SET last_seen = ?",
             (local_port, neighbor_hostname, neighbor_port, now, now, now),
         )
         self._journal.conn.commit()
@@ -52,12 +53,12 @@ class TopologyStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def remove_stale(self, max_age_seconds: int = 300):
+    def remove_stale(self, max_age_seconds: int = 300) -> None:
         """Remove topology entries not seen within max_age_seconds."""
-        cutoff = datetime.now(timezone.utc)
         from datetime import timedelta
-        cutoff = (cutoff - timedelta(seconds=max_age_seconds)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        self._journal.conn.execute(
-            "DELETE FROM topology WHERE last_seen < ?", (cutoff,)
+
+        cutoff = (datetime.now(UTC) - timedelta(seconds=max_age_seconds)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
         )
+        self._journal.conn.execute("DELETE FROM topology WHERE last_seen < ?", (cutoff,))
         self._journal.conn.commit()

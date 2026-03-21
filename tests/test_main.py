@@ -8,8 +8,8 @@ from pathlib import Path
 import fakeredis
 import pytest
 
-from watchtower.config import WatchtowerConfig, AnomalyConfig, BannerConfig, SyslogConfig
 from watchtower.collectors.base import RedisReader
+from watchtower.config import AnomalyConfig, BannerConfig, SyslogConfig, WatchtowerConfig
 from watchtower.main import WatchtowerDaemon
 
 MOCK_DIR = Path(__file__).parent / "mock_redis"
@@ -127,7 +127,9 @@ class TestPollCycle:
         daemon.run_once()
 
         active = daemon.findings.get_active()
-        link_findings = [f for f in active if "Link" in f.get("summary", "") or "link" in f.get("summary", "")]
+        link_findings = [
+            f for f in active if "Link" in f.get("summary", "") or "link" in f.get("summary", "")
+        ]
         assert len(link_findings) >= 1
 
     def test_banner_updated(self, daemon, tmp_path):

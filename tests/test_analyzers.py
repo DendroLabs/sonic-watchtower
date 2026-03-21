@@ -2,9 +2,7 @@
 
 import pytest
 
-from watchtower.store.journal import Journal
-from watchtower.store.baselines import BaselineStore
-from watchtower.analyzers.baseline_compare import BaselineCompareAnalyzer, AnomalyResult
+from watchtower.analyzers.baseline_compare import AnomalyResult, BaselineCompareAnalyzer
 from watchtower.config import AnomalyConfig
 from watchtower.llm.fallback import (
     finding_from_anomaly,
@@ -12,6 +10,8 @@ from watchtower.llm.fallback import (
     finding_from_link_change,
     finding_from_optic_degradation,
 )
+from watchtower.store.baselines import BaselineStore
+from watchtower.store.journal import Journal
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ class TestBaselineCompareAnalyzer:
 
     def test_warmup_prevents_anomaly(self, analyzer, baselines):
         # Add a few samples but not enough to warm up
-        for i in range(5):
+        for _ in range(5):
             baselines.update("Ethernet0", "rx_errors", 1.0)
 
         result = analyzer.analyze("Ethernet0", "rx_errors", 100.0)
@@ -54,7 +54,7 @@ class TestBaselineCompareAnalyzer:
 
     def test_detects_anomaly_after_warmup(self, analyzer, baselines):
         # Feed enough samples to warm up
-        for i in range(15):
+        for _ in range(15):
             baselines.update("Ethernet0", "rx_errors", 2.0)
 
         # Now check a high value
@@ -64,7 +64,7 @@ class TestBaselineCompareAnalyzer:
         assert result.deviation_factor > 5.0
 
     def test_immediate_threshold(self, analyzer, baselines):
-        for i in range(15):
+        for _ in range(15):
             baselines.update("Ethernet0", "rx_errors", 2.0)
 
         result = analyzer.analyze("Ethernet0", "rx_errors", 500.0)
@@ -72,7 +72,7 @@ class TestBaselineCompareAnalyzer:
         assert result.is_immediate
 
     def test_normal_value_no_anomaly(self, analyzer, baselines):
-        for i in range(15):
+        for _ in range(15):
             baselines.update("Ethernet0", "rx_errors", 10.0)
 
         result = analyzer.analyze("Ethernet0", "rx_errors", 12.0)
@@ -81,7 +81,7 @@ class TestBaselineCompareAnalyzer:
 
     def test_check_port_stats(self, analyzer, baselines):
         # Warm up baselines
-        for i in range(15):
+        for _ in range(15):
             baselines.update("Ethernet48", "rx_crc_errors", 2.0)
             baselines.update("Ethernet48", "rx_errors", 2.0)
             baselines.update("Ethernet48", "rx_drops", 5.0)
@@ -114,13 +114,20 @@ class TestBaselineCompareAnalyzer:
 
 # --- Template Findings ---
 
+
 class TestTemplateFindingFromAnomaly:
     def test_warning_finding(self):
         result = AnomalyResult(
-            port="Ethernet48", metric="rx_crc_errors",
-            current_value=1847, baseline_p50=2.0, baseline_p95=12.0,
-            baseline_p99=20.0, deviation_factor=153.9,
-            is_anomaly=True, is_immediate=False, warmed_up=True,
+            port="Ethernet48",
+            metric="rx_crc_errors",
+            current_value=1847,
+            baseline_p50=2.0,
+            baseline_p95=12.0,
+            baseline_p99=20.0,
+            deviation_factor=153.9,
+            is_anomaly=True,
+            is_immediate=False,
+            warmed_up=True,
         )
         finding = finding_from_anomaly(result)
         assert finding["severity"] == "warning"
@@ -130,20 +137,32 @@ class TestTemplateFindingFromAnomaly:
 
     def test_critical_finding(self):
         result = AnomalyResult(
-            port="Ethernet48", metric="rx_crc_errors",
-            current_value=5000, baseline_p50=2.0, baseline_p95=12.0,
-            baseline_p99=20.0, deviation_factor=416.7,
-            is_anomaly=True, is_immediate=True, warmed_up=True,
+            port="Ethernet48",
+            metric="rx_crc_errors",
+            current_value=5000,
+            baseline_p50=2.0,
+            baseline_p95=12.0,
+            baseline_p99=20.0,
+            deviation_factor=416.7,
+            is_anomaly=True,
+            is_immediate=True,
+            warmed_up=True,
         )
         finding = finding_from_anomaly(result)
         assert finding["severity"] == "critical"
 
     def test_finding_with_neighbor(self):
         result = AnomalyResult(
-            port="Ethernet48", metric="rx_errors",
-            current_value=100, baseline_p50=1.0, baseline_p95=5.0,
-            baseline_p99=10.0, deviation_factor=20.0,
-            is_anomaly=True, is_immediate=True, warmed_up=True,
+            port="Ethernet48",
+            metric="rx_errors",
+            current_value=100,
+            baseline_p50=1.0,
+            baseline_p95=5.0,
+            baseline_p99=10.0,
+            deviation_factor=20.0,
+            is_anomaly=True,
+            is_immediate=True,
+            warmed_up=True,
         )
         neighbor = {"neighbor_hostname": "switch-b", "neighbor_port": "Ethernet12"}
         finding = finding_from_anomaly(result, neighbor_info=neighbor)
@@ -170,8 +189,7 @@ class TestTemplateFindingBGP:
 
 class TestTemplateFindingLink:
     def test_link_down(self):
-        finding = finding_from_link_change("Ethernet48", "down",
-                                            {"neighbor_hostname": "switch-b"})
+        finding = finding_from_link_change("Ethernet48", "down", {"neighbor_hostname": "switch-b"})
         assert finding["severity"] == "warning"
         assert "down" in finding["summary"]
         assert "switch-b" in finding["summary"]
@@ -185,7 +203,9 @@ class TestTemplateFindingLink:
 class TestTemplateFindingOptic:
     def test_degraded(self):
         finding = finding_from_optic_degradation(
-            "Ethernet48", -8.2, baseline_rx_power=-2.1,
+            "Ethernet48",
+            -8.2,
+            baseline_rx_power=-2.1,
             neighbor_info={"neighbor_hostname": "switch-b"},
         )
         assert finding["severity"] == "warning"

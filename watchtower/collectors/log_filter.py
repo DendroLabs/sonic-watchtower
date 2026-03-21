@@ -36,7 +36,7 @@ _INTERESTING_PATTERNS = [
 class LogFilterCollector(BaseCollector):
     """Filters syslog entries for network-relevant events."""
 
-    def __init__(self, log_path: str = "/var/log/syslog", **kwargs):
+    def __init__(self, log_path: str = "/var/log/syslog", **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._log_path = log_path
 
@@ -62,10 +62,12 @@ class LogFilterCollector(BaseCollector):
             if self._is_noise(line):
                 continue
 
-            results.append({
-                "line": line,
-                "interesting": self._is_interesting(line),
-            })
+            results.append(
+                {
+                    "line": line,
+                    "interesting": self._is_interesting(line),
+                }
+            )
 
         return results
 

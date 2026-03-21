@@ -43,8 +43,9 @@ class SyslogEmitter:
             facility = _FACILITY_MAP.get(self._config.facility, _syslog.LOG_LOCAL4)
             _syslog.openlog("watchtower", _syslog.LOG_PID, facility)
 
-    def emit_finding(self, finding_id: str, severity: str, summary: str,
-                     is_peer: bool = False):
+    def emit_finding(
+        self, finding_id: str, severity: str, summary: str, is_peer: bool = False
+    ) -> None:
         """Emit a finding to syslog if it meets the minimum severity threshold."""
         if not self._config.enabled:
             return
@@ -62,26 +63,30 @@ class SyslogEmitter:
         message = f"[{tag}] {summary} finding_id={finding_id}"
 
         if self._dry_run:
-            self._emitted.append({
-                "priority": priority,
-                "severity": severity,
-                "message": message,
-                "finding_id": finding_id,
-            })
+            self._emitted.append(
+                {
+                    "priority": priority,
+                    "severity": severity,
+                    "message": message,
+                    "finding_id": finding_id,
+                }
+            )
         else:
             _syslog.syslog(priority, message)
 
-    def emit_status(self, message: str):
+    def emit_status(self, message: str) -> None:
         """Emit a status/debug message (e.g., governor state changes)."""
         if not self._config.enabled:
             return
 
         if self._dry_run:
-            self._emitted.append({
-                "priority": _syslog.LOG_DEBUG,
-                "severity": "debug",
-                "message": message,
-            })
+            self._emitted.append(
+                {
+                    "priority": _syslog.LOG_DEBUG,
+                    "severity": "debug",
+                    "message": message,
+                }
+            )
         else:
             _syslog.syslog(_syslog.LOG_DEBUG, message)
 

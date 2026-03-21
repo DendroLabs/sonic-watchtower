@@ -15,6 +15,6 @@ class BaseAnalyzer(ABC):
         self._journal = journal
 
     @abstractmethod
-    def analyze(self, **kwargs) -> dict | list:
+    def analyze(self, *args: Any, **kwargs: Any) -> Any:
         """Run analysis and return structured results."""
         ...

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from watchtower.store.journal import Journal
 
@@ -11,7 +10,7 @@ from watchtower.store.journal import Journal
 def _hour_of_week(dt: datetime | None = None) -> int:
     """Return 0-167 bucket for the current hour-of-week."""
     if dt is None:
-        dt = datetime.now(timezone.utc)
+        dt = datetime.now(UTC)
     return dt.weekday() * 24 + dt.hour
 
 
@@ -49,17 +48,18 @@ class BaselineStore:
             "updated_at": row["updated_at"],
         }
 
-    def update(self, port: str, metric: str, value: float, dt: datetime | None = None):
+    def update(self, port: str, metric: str, value: float, dt: datetime | None = None) -> None:
         """Update the baseline with a new sample using EMA."""
         hour = _hour_of_week(dt)
         existing = self.get(port, metric, hour)
 
         if existing is None:
             # First sample -- seed all percentile estimates with this value
-            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
             self._journal.conn.execute(
-                "INSERT INTO baselines (port, metric, hour_of_week, p50, p95, p99, sample_count, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, 1, ?)",
+                "INSERT INTO baselines"
+                " (port, metric, hour_of_week, p50, p95, p99, sample_count, updated_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, 1, ?)",
                 (port, metric, hour, value, value, value, now),
             )
         else:
@@ -70,7 +70,7 @@ class BaselineStore:
             p95 = self._ema_quantile(existing["p95"], value, alpha, 0.95)
             p99 = self._ema_quantile(existing["p99"], value, alpha, 0.99)
             count = existing["sample_count"] + 1
-            now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
             self._journal.conn.execute(
                 "UPDATE baselines SET p50 = ?, p95 = ?, p99 = ?, sample_count = ?, updated_at = ? "
@@ -110,4 +110,4 @@ class BaselineStore:
             "FROM baselines WHERE port = ? AND metric = ?",
             (port, metric),
         ).fetchone()
-        return row["total"] >= min_samples
+        return bool(row["total"] >= min_samples)

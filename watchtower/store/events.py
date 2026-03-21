@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 from watchtower.store.journal import Journal
 
 
 def _utcnow() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class EventStore:
@@ -31,18 +31,18 @@ class EventStore:
         raw_json = json.dumps(raw_data) if raw_data else None
 
         cursor = self._journal.conn.execute(
-            "INSERT INTO events (timestamp, source, category, severity, port, raw_data, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO events"
+            " (timestamp, source, category, severity, port, raw_data, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
             (now, source, category, severity, port, raw_json, now),
         )
         self._journal.conn.commit()
+        assert cursor.lastrowid is not None  # guaranteed by AUTOINCREMENT
         return cursor.lastrowid
 
     def get_recent(self, seconds: int = 3600, severity: str | None = None) -> list[dict]:
         """Get events from the last N seconds."""
-        cutoff = (datetime.now(timezone.utc) - timedelta(seconds=seconds)).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        )
+        cutoff = (datetime.now(UTC) - timedelta(seconds=seconds)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         if severity:
             rows = self._journal.conn.execute(
@@ -67,9 +67,7 @@ class EventStore:
 
     def get_by_port(self, port: str, seconds: int = 3600) -> list[dict]:
         """Get recent events for a specific port."""
-        cutoff = (datetime.now(timezone.utc) - timedelta(seconds=seconds)).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        )
+        cutoff = (datetime.now(UTC) - timedelta(seconds=seconds)).strftime("%Y-%m-%dT%H:%M:%SZ")
         rows = self._journal.conn.execute(
             "SELECT id, timestamp, source, category, severity, port, raw_data "
             "FROM events WHERE port = ? AND timestamp >= ? ORDER BY timestamp DESC",
@@ -85,9 +83,7 @@ class EventStore:
 
     def count_recent(self, seconds: int = 3600) -> dict:
         """Count recent events by severity."""
-        cutoff = (datetime.now(timezone.utc) - timedelta(seconds=seconds)).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        )
+        cutoff = (datetime.now(UTC) - timedelta(seconds=seconds)).strftime("%Y-%m-%dT%H:%M:%SZ")
         rows = self._journal.conn.execute(
             "SELECT severity, COUNT(*) as count FROM events "
             "WHERE timestamp >= ? GROUP BY severity",
