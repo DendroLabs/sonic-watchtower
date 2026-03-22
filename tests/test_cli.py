@@ -162,7 +162,9 @@ class TestShowPeers:
         peer_state = PeerStateStore(journal)
         peer_state.update_heartbeat("spine-1", severity="ok", active_finding_count=0)
         peer_state.update_heartbeat(
-            "switch-b", severity="warning", active_finding_count=2,
+            "switch-b",
+            severity="warning",
+            active_finding_count=2,
             governor_state="throttled",
         )
         journal.close()
@@ -197,10 +199,17 @@ class TestShowTopologyFabric:
         topo.update_neighbor("Ethernet0", "spine-1", "Ethernet4")
 
         peer_state = PeerStateStore(journal)
-        peer_state.update_peer_topology("switch-b", [
-            {"local_port": "Ethernet0", "remote_host": "spine-1",
-             "remote_port": "Ethernet8", "link_state": "up"},
-        ])
+        peer_state.update_peer_topology(
+            "switch-b",
+            [
+                {
+                    "local_port": "Ethernet0",
+                    "remote_host": "spine-1",
+                    "remote_port": "Ethernet8",
+                    "link_state": "up",
+                },
+            ],
+        )
         journal.close()
 
         cfg = tmp_path / "fabric.yml"

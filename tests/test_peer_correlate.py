@@ -35,22 +35,30 @@ class TestPeerCorrelate:
         assert analyzer.analyze() == []
 
     def test_no_peer_events(
-        self, analyzer: PeerCorrelateAnalyzer, events: EventStore,
+        self,
+        analyzer: PeerCorrelateAnalyzer,
+        events: EventStore,
     ) -> None:
         events.record(source="local", category="link_change", severity="warning", port="Ethernet0")
         assert analyzer.analyze() == []
 
     def test_no_local_events(
-        self, analyzer: PeerCorrelateAnalyzer, events: EventStore,
+        self,
+        analyzer: PeerCorrelateAnalyzer,
+        events: EventStore,
     ) -> None:
         events.record(
-            source="peer", category="link_change", severity="info",
+            source="peer",
+            category="link_change",
+            severity="info",
             raw_data={"peer_hostname": "switch-b", "summary": "test"},
         )
         assert analyzer.analyze() == []
 
     def test_correlation_on_same_link(
-        self, analyzer: PeerCorrelateAnalyzer, events: EventStore,
+        self,
+        analyzer: PeerCorrelateAnalyzer,
+        events: EventStore,
         topology: TopologyStore,
     ) -> None:
         # Set up topology: Ethernet48 connected to switch-b:Ethernet12
@@ -58,11 +66,16 @@ class TestPeerCorrelate:
 
         # Local event on Ethernet48
         events.record(
-            source="local", category="link_change", severity="warning", port="Ethernet48",
+            source="local",
+            category="link_change",
+            severity="warning",
+            port="Ethernet48",
         )
         # Peer event from switch-b
         events.record(
-            source="peer", category="link_change", severity="info",
+            source="peer",
+            category="link_change",
+            severity="info",
             raw_data={"peer_hostname": "switch-b", "summary": "Link down on Ethernet12"},
         )
 
@@ -74,58 +87,83 @@ class TestPeerCorrelate:
         assert results[0].correlation_type == "same_link"
 
     def test_no_correlation_different_neighbor(
-        self, analyzer: PeerCorrelateAnalyzer, events: EventStore,
+        self,
+        analyzer: PeerCorrelateAnalyzer,
+        events: EventStore,
         topology: TopologyStore,
     ) -> None:
         topology.update_neighbor("Ethernet48", "switch-b", "Ethernet12")
 
         events.record(
-            source="local", category="link_change", severity="warning", port="Ethernet48",
+            source="local",
+            category="link_change",
+            severity="warning",
+            port="Ethernet48",
         )
         # Peer event from switch-c (not the neighbor on Ethernet48)
         events.record(
-            source="peer", category="link_change", severity="info",
+            source="peer",
+            category="link_change",
+            severity="info",
             raw_data={"peer_hostname": "switch-c", "summary": "Link down"},
         )
 
         assert analyzer.analyze() == []
 
     def test_no_correlation_when_port_missing(
-        self, analyzer: PeerCorrelateAnalyzer, events: EventStore,
+        self,
+        analyzer: PeerCorrelateAnalyzer,
+        events: EventStore,
         topology: TopologyStore,
     ) -> None:
         topology.update_neighbor("Ethernet48", "switch-b", "Ethernet12")
 
         # Local event with no port
         events.record(
-            source="local", category="bgp_change", severity="warning",
+            source="local",
+            category="bgp_change",
+            severity="warning",
         )
         events.record(
-            source="peer", category="link_change", severity="info",
+            source="peer",
+            category="link_change",
+            severity="info",
             raw_data={"peer_hostname": "switch-b", "summary": "test"},
         )
 
         assert analyzer.analyze() == []
 
     def test_multiple_correlations(
-        self, analyzer: PeerCorrelateAnalyzer, events: EventStore,
+        self,
+        analyzer: PeerCorrelateAnalyzer,
+        events: EventStore,
         topology: TopologyStore,
     ) -> None:
         topology.update_neighbor("Ethernet0", "spine-1", "Ethernet4")
         topology.update_neighbor("Ethernet48", "switch-b", "Ethernet12")
 
         events.record(
-            source="local", category="anomaly", severity="warning", port="Ethernet0",
+            source="local",
+            category="anomaly",
+            severity="warning",
+            port="Ethernet0",
         )
         events.record(
-            source="local", category="link_change", severity="warning", port="Ethernet48",
+            source="local",
+            category="link_change",
+            severity="warning",
+            port="Ethernet48",
         )
         events.record(
-            source="peer", category="anomaly", severity="info",
+            source="peer",
+            category="anomaly",
+            severity="info",
             raw_data={"peer_hostname": "spine-1", "summary": "RX errors"},
         )
         events.record(
-            source="peer", category="link_change", severity="info",
+            source="peer",
+            category="link_change",
+            severity="info",
             raw_data={"peer_hostname": "switch-b", "summary": "Link down"},
         )
 
@@ -135,22 +173,31 @@ class TestPeerCorrelate:
         assert ports == {"Ethernet0", "Ethernet48"}
 
     def test_dedup_same_pair(
-        self, analyzer: PeerCorrelateAnalyzer, events: EventStore,
+        self,
+        analyzer: PeerCorrelateAnalyzer,
+        events: EventStore,
         topology: TopologyStore,
     ) -> None:
         """Same local+peer event pair should only produce one correlation."""
         topology.update_neighbor("Ethernet0", "spine-1", "Ethernet4")
 
         events.record(
-            source="local", category="anomaly", severity="warning", port="Ethernet0",
+            source="local",
+            category="anomaly",
+            severity="warning",
+            port="Ethernet0",
         )
         # Two peer events from same neighbor
         events.record(
-            source="peer", category="anomaly", severity="info",
+            source="peer",
+            category="anomaly",
+            severity="info",
             raw_data={"peer_hostname": "spine-1", "summary": "RX errors"},
         )
         events.record(
-            source="peer", category="link_change", severity="info",
+            source="peer",
+            category="link_change",
+            severity="info",
             raw_data={"peer_hostname": "spine-1", "summary": "Link flap"},
         )
 

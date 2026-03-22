@@ -16,29 +16,47 @@ class PeerMessageHandler(Protocol):
     """Interface for handling incoming peer messages."""
 
     def handle_heartbeat(
-        self, hostname: str, role: str, uptime_seconds: int,
-        current_severity: str, active_finding_count: int, governor_state: str,
+        self,
+        hostname: str,
+        role: str,
+        uptime_seconds: int,
+        current_severity: str,
+        active_finding_count: int,
+        governor_state: str,
     ) -> dict[str, Any]:
         """Handle a heartbeat and return our own status as a dict."""
         ...
 
     def handle_event(
-        self, hostname: str, timestamp: str, event_type: str,
-        affected_port: str, summary: str, metrics: dict[str, str],
+        self,
+        hostname: str,
+        timestamp: str,
+        event_type: str,
+        affected_port: str,
+        summary: str,
+        metrics: dict[str, str],
     ) -> bool:
         """Handle an incoming event. Returns True if accepted."""
         ...
 
     def handle_topology(
-        self, hostname: str, neighbors: list[dict[str, str]],
+        self,
+        hostname: str,
+        neighbors: list[dict[str, str]],
     ) -> bool:
         """Handle a topology fragment. Returns True if accepted."""
         ...
 
     def handle_finding(
-        self, hostname: str, origin_hostname: str, timestamp: str,
-        severity: str, summary: str, affected_scope: str,
-        ttl: int, finding_id: str,
+        self,
+        hostname: str,
+        origin_hostname: str,
+        timestamp: str,
+        severity: str,
+        summary: str,
+        affected_scope: str,
+        ttl: int,
+        finding_id: str,
     ) -> tuple[bool, bool]:
         """Handle a finding share. Returns (accepted, already_seen)."""
         ...
@@ -86,7 +104,9 @@ class WatchtowerServicer(watchtower_pb2_grpc.WatchtowerPeerServicer):
     ) -> watchtower_pb2.EventShareResponse:
         logger.debug(
             "Event from %s: %s on %s",
-            request.hostname, request.event_type, request.affected_port,
+            request.hostname,
+            request.event_type,
+            request.affected_port,
         )
         try:
             accepted = self._handler.handle_event(
@@ -109,7 +129,8 @@ class WatchtowerServicer(watchtower_pb2_grpc.WatchtowerPeerServicer):
     ) -> watchtower_pb2.TopologyFragmentResponse:
         logger.debug(
             "Topology from %s (%d neighbors)",
-            request.hostname, len(request.neighbors),
+            request.hostname,
+            len(request.neighbors),
         )
         try:
             neighbors = [
@@ -137,7 +158,10 @@ class WatchtowerServicer(watchtower_pb2_grpc.WatchtowerPeerServicer):
     ) -> watchtower_pb2.FindingShareResponse:
         logger.debug(
             "Finding from %s (origin=%s, ttl=%d): %s",
-            request.hostname, request.origin_hostname, request.ttl, request.summary,
+            request.hostname,
+            request.origin_hostname,
+            request.ttl,
+            request.summary,
         )
         try:
             accepted, already_seen = self._handler.handle_finding(
@@ -151,7 +175,8 @@ class WatchtowerServicer(watchtower_pb2_grpc.WatchtowerPeerServicer):
                 finding_id=request.finding_id,
             )
             return watchtower_pb2.FindingShareResponse(
-                accepted=accepted, already_seen=already_seen,
+                accepted=accepted,
+                already_seen=already_seen,
             )
         except Exception:
             logger.exception("Error handling finding from %s", request.hostname)

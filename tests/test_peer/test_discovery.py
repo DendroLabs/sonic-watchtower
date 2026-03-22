@@ -32,7 +32,10 @@ class TestPeerDiscovery:
 
     @patch("watchtower.peer.discovery.socket.getaddrinfo")
     def test_discovers_single_peer(
-        self, mock_getaddrinfo: object, discovery: PeerDiscovery, topology: TopologyStore,
+        self,
+        mock_getaddrinfo: object,
+        discovery: PeerDiscovery,
+        topology: TopologyStore,
     ) -> None:
         mock_getaddrinfo.return_value = [  # type: ignore[attr-defined]
             (2, 1, 6, "", ("10.0.0.1", 5950))
@@ -47,7 +50,10 @@ class TestPeerDiscovery:
 
     @patch("watchtower.peer.discovery.socket.getaddrinfo")
     def test_deduplicates_same_neighbor_on_multiple_ports(
-        self, mock_getaddrinfo: object, discovery: PeerDiscovery, topology: TopologyStore,
+        self,
+        mock_getaddrinfo: object,
+        discovery: PeerDiscovery,
+        topology: TopologyStore,
     ) -> None:
         mock_getaddrinfo.return_value = [  # type: ignore[attr-defined]
             (2, 1, 6, "", ("10.0.0.1", 5950))
@@ -60,7 +66,10 @@ class TestPeerDiscovery:
 
     @patch("watchtower.peer.discovery.socket.getaddrinfo")
     def test_discovers_multiple_peers(
-        self, mock_getaddrinfo: object, discovery: PeerDiscovery, topology: TopologyStore,
+        self,
+        mock_getaddrinfo: object,
+        discovery: PeerDiscovery,
+        topology: TopologyStore,
     ) -> None:
         def resolve(hostname: str, port: int, *args: object, **kwargs: object) -> list:
             addrs = {"spine-1": "10.0.0.1", "switch-b": "10.0.0.2"}
@@ -78,7 +87,10 @@ class TestPeerDiscovery:
 
     @patch("watchtower.peer.discovery.socket.getaddrinfo")
     def test_skips_unresolvable_hostname(
-        self, mock_getaddrinfo: object, discovery: PeerDiscovery, topology: TopologyStore,
+        self,
+        mock_getaddrinfo: object,
+        discovery: PeerDiscovery,
+        topology: TopologyStore,
     ) -> None:
         import socket as _socket
 
@@ -90,7 +102,10 @@ class TestPeerDiscovery:
 
     @patch("watchtower.peer.discovery.socket.getaddrinfo")
     def test_skips_empty_hostname(
-        self, mock_getaddrinfo: object, discovery: PeerDiscovery, topology: TopologyStore,
+        self,
+        mock_getaddrinfo: object,
+        discovery: PeerDiscovery,
+        topology: TopologyStore,
     ) -> None:
         topology.update_neighbor("Ethernet0", "", "Ethernet0")
         peers = discovery.discover_peers()

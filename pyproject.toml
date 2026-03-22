@@ -28,6 +28,9 @@ dev = [
     "grpcio-tools>=1.60",
 ]
 
+[tool.setuptools.packages.find]
+include = ["watchtower*"]
+
 [project.scripts]
 watchtower = "watchtower.cli.main:cli"
 

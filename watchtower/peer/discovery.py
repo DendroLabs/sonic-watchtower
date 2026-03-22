@@ -45,11 +45,13 @@ class PeerDiscovery:
 
             address = self._resolve_address(hostname)
             if address is not None:
-                endpoints.append(PeerEndpoint(
-                    hostname=hostname,
-                    address=address,
-                    port=self._port,
-                ))
+                endpoints.append(
+                    PeerEndpoint(
+                        hostname=hostname,
+                        address=address,
+                        port=self._port,
+                    )
+                )
 
         return endpoints
 
@@ -57,7 +59,10 @@ class PeerDiscovery:
         """Resolve a hostname to an IP address. Returns None on failure."""
         try:
             results = socket.getaddrinfo(
-                hostname, self._port, socket.AF_UNSPEC, socket.SOCK_STREAM,
+                hostname,
+                self._port,
+                socket.AF_UNSPEC,
+                socket.SOCK_STREAM,
             )
             if results:
                 # Return the first resolved address

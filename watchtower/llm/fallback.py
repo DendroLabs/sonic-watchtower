@@ -91,7 +91,11 @@ def finding_from_link_change(port: str, new_state: str, neighbor_info: dict | No
 
 
 def finding_from_peer_correlation(
-    local_event: dict, peer_event: dict, peer_hostname: str, local_port: str, peer_port: str,
+    local_event: dict,
+    peer_event: dict,
+    peer_hostname: str,
+    local_port: str,
+    peer_port: str,
 ) -> dict:
     """Generate a finding when local and peer events correlate on the same link."""
     local_cat = local_event.get("category", "event")
@@ -117,8 +121,12 @@ def finding_from_peer_correlation(
 
 
 def finding_from_topology_change(
-    change_type: str, local_port: str, neighbor_hostname: str, neighbor_port: str,
-    old_neighbor_hostname: str | None = None, old_neighbor_port: str | None = None,
+    change_type: str,
+    local_port: str,
+    neighbor_hostname: str,
+    neighbor_port: str,
+    old_neighbor_hostname: str | None = None,
+    old_neighbor_port: str | None = None,
 ) -> dict:
     """Generate a finding for a topology change."""
     if change_type == "neighbor_added":

@@ -55,7 +55,8 @@ class TestPeerManagerLifecycle:
     def test_disabled_by_config(self, journal: Journal) -> None:
         config = WatchtowerConfig(peer=PeerConfig(enabled=False))
         mgr = PeerManager(
-            config=config, journal=journal,
+            config=config,
+            journal=journal,
             topology_store=TopologyStore(journal),
             events=EventStore(journal),
             findings=FindingsStore(journal),
@@ -102,20 +103,28 @@ class TestHeartbeatHandler:
         assert peer["active_finding_count"] == 2
 
     def test_handle_heartbeat_severity_reflects_findings(
-        self, manager: PeerManager, journal: Journal,
+        self,
+        manager: PeerManager,
+        journal: Journal,
     ) -> None:
         findings = FindingsStore(journal)
         findings.create(severity="warning", summary="test warning")
         result = manager.handle_heartbeat(
-            hostname="spine-1", role="leaf", uptime_seconds=0,
-            current_severity="ok", active_finding_count=0, governor_state="full",
+            hostname="spine-1",
+            role="leaf",
+            uptime_seconds=0,
+            current_severity="ok",
+            active_finding_count=0,
+            governor_state="full",
         )
         assert result["current_severity"] == "warning"
 
 
 class TestEventHandler:
     def test_handle_event_records_in_store(
-        self, manager: PeerManager, journal: Journal,
+        self,
+        manager: PeerManager,
+        journal: Journal,
     ) -> None:
         manager.handle_event(
             hostname="switch-b",
@@ -137,8 +146,12 @@ class TestTopologyHandler:
         manager.handle_topology(
             hostname="switch-b",
             neighbors=[
-                {"local_port": "Ethernet0", "remote_host": "spine-1",
-                 "remote_port": "Ethernet4", "link_state": "up"},
+                {
+                    "local_port": "Ethernet0",
+                    "remote_host": "spine-1",
+                    "remote_port": "Ethernet4",
+                    "link_state": "up",
+                },
             ],
         )
         topo = manager.peer_state.get_peer_topology("switch-b")
@@ -163,16 +176,24 @@ class TestFindingHandler:
 
     def test_handle_finding_dedup(self, manager: PeerManager) -> None:
         manager.handle_finding(
-            hostname="switch-b", origin_hostname="switch-b",
-            timestamp="2026-03-21T14:00:00Z", severity="warning",
-            summary="Link errors", affected_scope="Ethernet48",
-            ttl=3, finding_id="f-20260321-0001",
+            hostname="switch-b",
+            origin_hostname="switch-b",
+            timestamp="2026-03-21T14:00:00Z",
+            severity="warning",
+            summary="Link errors",
+            affected_scope="Ethernet48",
+            ttl=3,
+            finding_id="f-20260321-0001",
         )
         _, already_seen = manager.handle_finding(
-            hostname="switch-c", origin_hostname="switch-b",
-            timestamp="2026-03-21T14:00:00Z", severity="warning",
-            summary="Link errors", affected_scope="Ethernet48",
-            ttl=2, finding_id="f-20260321-0001",
+            hostname="switch-c",
+            origin_hostname="switch-b",
+            timestamp="2026-03-21T14:00:00Z",
+            severity="warning",
+            summary="Link errors",
+            affected_scope="Ethernet48",
+            ttl=2,
+            finding_id="f-20260321-0001",
         )
         assert already_seen is True
 
@@ -199,10 +220,14 @@ class TestFindingHandler:
 
         # Finding arrives from switch-b with TTL=3
         manager.handle_finding(
-            hostname="switch-b", origin_hostname="switch-b",
-            timestamp="2026-03-21T14:00:00Z", severity="warning",
-            summary="test", affected_scope="Ethernet0",
-            ttl=3, finding_id="f-20260321-0099",
+            hostname="switch-b",
+            origin_hostname="switch-b",
+            timestamp="2026-03-21T14:00:00Z",
+            severity="warning",
+            summary="test",
+            affected_scope="Ethernet0",
+            ttl=3,
+            finding_id="f-20260321-0099",
         )
         # Should gossip to switch-c but NOT back to switch-b
         assert len(calls_b) == 0
@@ -214,19 +239,25 @@ class TestFindingHandler:
 
         class FakeClient:
             hostname = "switch-c"
+
             def share_finding(self, **kwargs: object) -> tuple[bool, bool]:
                 calls.append("called")
                 return True, False
+
             def close(self) -> None:
                 pass
 
         manager._clients["switch-c"] = FakeClient()  # type: ignore[assignment]
 
         manager.handle_finding(
-            hostname="switch-b", origin_hostname="switch-b",
-            timestamp="2026-03-21T14:00:00Z", severity="warning",
-            summary="test", affected_scope="Ethernet0",
-            ttl=1, finding_id="f-20260321-0100",
+            hostname="switch-b",
+            origin_hostname="switch-b",
+            timestamp="2026-03-21T14:00:00Z",
+            severity="warning",
+            summary="test",
+            affected_scope="Ethernet0",
+            ttl=1,
+            finding_id="f-20260321-0100",
         )
         assert len(calls) == 0
 
@@ -238,17 +269,21 @@ class TestShareFinding:
 
         class FakeClient:
             hostname = "switch-c"
+
             def share_finding(self, **kwargs: object) -> tuple[bool, bool]:
                 calls.append("called")
                 return True, False
+
             def close(self) -> None:
                 pass
 
         manager._clients["switch-c"] = FakeClient()  # type: ignore[assignment]
 
         manager.share_finding(
-            finding_id="f-0001", severity="info",
-            summary="something minor", affected_scope="",
+            finding_id="f-0001",
+            severity="info",
+            summary="something minor",
+            affected_scope="",
         )
         assert len(calls) == 0
 
@@ -257,17 +292,21 @@ class TestShareFinding:
 
         class FakeClient:
             hostname = "switch-c"
+
             def share_finding(self, **kwargs: object) -> tuple[bool, bool]:
                 calls.append(dict(kwargs))
                 return True, False
+
             def close(self) -> None:
                 pass
 
         manager._clients["switch-c"] = FakeClient()  # type: ignore[assignment]
 
         manager.share_finding(
-            finding_id="f-0001", severity="warning",
-            summary="Link errors", affected_scope="Ethernet48",
+            finding_id="f-0001",
+            severity="warning",
+            summary="Link errors",
+            affected_scope="Ethernet48",
         )
         assert len(calls) == 1
         assert calls[0]["finding_id"] == "f-0001"
@@ -290,7 +329,9 @@ class TestDedup:
 class TestRefreshPeers:
     @patch("watchtower.peer.discovery.socket.getaddrinfo")
     def test_refresh_creates_clients(
-        self, mock_getaddrinfo: object, manager: PeerManager,
+        self,
+        mock_getaddrinfo: object,
+        manager: PeerManager,
     ) -> None:
         mock_getaddrinfo.return_value = [  # type: ignore[attr-defined]
             (2, 1, 6, "", ("10.0.0.1", 5950))
@@ -301,14 +342,18 @@ class TestRefreshPeers:
 
     @patch("watchtower.peer.discovery.socket.getaddrinfo")
     def test_refresh_removes_stale_clients(
-        self, mock_getaddrinfo: object, manager: PeerManager,
+        self,
+        mock_getaddrinfo: object,
+        manager: PeerManager,
     ) -> None:
         mock_getaddrinfo.return_value = [  # type: ignore[attr-defined]
             (2, 1, 6, "", ("10.0.0.1", 5950))
         ]
         # Add a client manually that is not in topology
         manager._clients["old-switch"] = PeerClient(
-            hostname="old-switch", address="localhost", port=1,
+            hostname="old-switch",
+            address="localhost",
+            port=1,
         )
         manager._topology_store.update_neighbor("Ethernet0", "spine-1", "Ethernet4")
         manager.refresh_peers()

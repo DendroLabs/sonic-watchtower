@@ -116,13 +116,19 @@ class TestPeerTopology:
         assert topo[0]["neighbor_hostname"] == "spine-1"
 
     def test_update_peer_topology_replaces(self, store: PeerStateStore) -> None:
-        store.update_peer_topology("switch-b", [
-            {"local_port": "Ethernet0", "remote_host": "spine-1", "remote_port": "Ethernet4"},
-        ])
+        store.update_peer_topology(
+            "switch-b",
+            [
+                {"local_port": "Ethernet0", "remote_host": "spine-1", "remote_port": "Ethernet4"},
+            ],
+        )
         # Replace with a different topology
-        store.update_peer_topology("switch-b", [
-            {"local_port": "Ethernet4", "remote_host": "spine-2", "remote_port": "Ethernet8"},
-        ])
+        store.update_peer_topology(
+            "switch-b",
+            [
+                {"local_port": "Ethernet4", "remote_host": "spine-2", "remote_port": "Ethernet8"},
+            ],
+        )
         topo = store.get_peer_topology("switch-b")
         assert len(topo) == 1
         assert topo[0]["local_port"] == "Ethernet4"
@@ -131,12 +137,18 @@ class TestPeerTopology:
         assert store.get_peer_topology("nonexistent") == []
 
     def test_get_fabric_topology(self, store: PeerStateStore) -> None:
-        store.update_peer_topology("switch-b", [
-            {"local_port": "Ethernet0", "remote_host": "spine-1", "remote_port": "Ethernet4"},
-        ])
-        store.update_peer_topology("switch-c", [
-            {"local_port": "Ethernet0", "remote_host": "spine-1", "remote_port": "Ethernet8"},
-        ])
+        store.update_peer_topology(
+            "switch-b",
+            [
+                {"local_port": "Ethernet0", "remote_host": "spine-1", "remote_port": "Ethernet4"},
+            ],
+        )
+        store.update_peer_topology(
+            "switch-c",
+            [
+                {"local_port": "Ethernet0", "remote_host": "spine-1", "remote_port": "Ethernet8"},
+            ],
+        )
         fabric = store.get_fabric_topology()
         assert len(fabric) == 2
         # Sorted by peer_hostname, then local_port
@@ -144,14 +156,17 @@ class TestPeerTopology:
         assert fabric[1]["peer_hostname"] == "switch-c"
 
     def test_topology_with_link_state(self, store: PeerStateStore) -> None:
-        store.update_peer_topology("switch-b", [
-            {
-                "local_port": "Ethernet0",
-                "remote_host": "spine-1",
-                "remote_port": "Ethernet4",
-                "link_state": "down",
-            },
-        ])
+        store.update_peer_topology(
+            "switch-b",
+            [
+                {
+                    "local_port": "Ethernet0",
+                    "remote_host": "spine-1",
+                    "remote_port": "Ethernet4",
+                    "link_state": "down",
+                },
+            ],
+        )
         topo = store.get_peer_topology("switch-b")
         assert topo[0]["link_state"] == "down"
 
@@ -159,9 +174,7 @@ class TestPeerTopology:
 class TestSchemaMigration:
     def test_new_columns_exist(self, journal: Journal) -> None:
         """Verify the migration added the new columns to peer_state."""
-        row = journal.conn.execute(
-            "PRAGMA table_info(peer_state)"
-        ).fetchall()
+        row = journal.conn.execute("PRAGMA table_info(peer_state)").fetchall()
         col_names = [r["name"] for r in row]
         assert "role" in col_names
         assert "active_finding_count" in col_names

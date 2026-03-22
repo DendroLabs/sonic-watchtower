@@ -81,13 +81,15 @@ class PeerCorrelateAnalyzer(BaseAnalyzer):
                     continue
                 seen.add(pair)
 
-                results.append(CorrelationResult(
-                    local_event=local_ev,
-                    peer_event=pe,
-                    local_port=port,
-                    peer_hostname=peer_hostname,
-                    peer_port=neighbor["neighbor_port"],
-                    correlation_type="same_link",
-                ))
+                results.append(
+                    CorrelationResult(
+                        local_event=local_ev,
+                        peer_event=pe,
+                        local_port=port,
+                        peer_hostname=peer_hostname,
+                        peer_port=neighbor["neighbor_port"],
+                        correlation_type="same_link",
+                    )
+                )
 
         return results

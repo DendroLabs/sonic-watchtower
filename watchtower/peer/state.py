@@ -36,9 +36,19 @@ class PeerStateStore:
             " DO UPDATE SET last_heartbeat = ?, peer_severity = ?,"
             "  active_finding_count = ?, governor_state = ?, role = ?, updated_at = ?",
             (
-                hostname, now, severity, active_finding_count,
-                governor_state, role, now,
-                now, severity, active_finding_count, governor_state, role, now,
+                hostname,
+                now,
+                severity,
+                active_finding_count,
+                governor_state,
+                role,
+                now,
+                now,
+                severity,
+                active_finding_count,
+                governor_state,
+                role,
+                now,
             ),
         )
         self._journal.conn.commit()
@@ -47,8 +57,7 @@ class PeerStateStore:
         """Update the last event summary for a peer."""
         now = _utcnow()
         self._journal.conn.execute(
-            "UPDATE peer_state SET last_event_summary = ?, updated_at = ?"
-            " WHERE peer_hostname = ?",
+            "UPDATE peer_state SET last_event_summary = ?, updated_at = ? WHERE peer_hostname = ?",
             (summary, now, hostname),
         )
         self._journal.conn.commit()
@@ -86,9 +95,7 @@ class PeerStateStore:
 
     def remove_peer(self, hostname: str) -> None:
         """Remove a peer from the state table."""
-        self._journal.conn.execute(
-            "DELETE FROM peer_state WHERE peer_hostname = ?", (hostname,)
-        )
+        self._journal.conn.execute("DELETE FROM peer_state WHERE peer_hostname = ?", (hostname,))
         self._journal.conn.commit()
 
     def update_peer_topology(

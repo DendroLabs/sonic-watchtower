@@ -132,7 +132,8 @@ class PeerClient:
                 for n in neighbors
             ]
             request = watchtower_pb2.TopologyFragmentRequest(
-                hostname=hostname, neighbors=entries,
+                hostname=hostname,
+                neighbors=entries,
             )
             response = self._stub.ShareTopology(request, timeout=timeout)
             return response.accepted

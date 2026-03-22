@@ -99,9 +99,7 @@ def topology(ctx: click.Context, fabric: bool) -> None:
 
     if entries:
         click.echo(f"Local topology ({len(entries)} neighbors):\n")
-        click.echo(
-            f"  {'Local Port':<16s} {'Neighbor':<20s} {'Remote Port':<16s} {'Last Seen'}"
-        )
+        click.echo(f"  {'Local Port':<16s} {'Neighbor':<20s} {'Remote Port':<16s} {'Last Seen'}")
         click.echo(f"  {'-' * 15:<16s} {'-' * 19:<20s} {'-' * 15:<16s} {'-' * 19}")
         for e in entries:
             click.echo(
@@ -115,12 +113,10 @@ def topology(ctx: click.Context, fabric: bool) -> None:
         if fabric_topo:
             click.echo(f"\nPeer topology ({len(fabric_topo)} entries):\n")
             click.echo(
-                f"  {'Switch':<16s} {'Port':<16s} "
-                f"{'Neighbor':<16s} {'Remote Port':<16s} {'State'}"
+                f"  {'Switch':<16s} {'Port':<16s} {'Neighbor':<16s} {'Remote Port':<16s} {'State'}"
             )
             click.echo(
-                f"  {'-' * 15:<16s} {'-' * 15:<16s} "
-                f"{'-' * 15:<16s} {'-' * 15:<16s} {'-' * 5}"
+                f"  {'-' * 15:<16s} {'-' * 15:<16s} {'-' * 15:<16s} {'-' * 15:<16s} {'-' * 5}"
             )
             for e in fabric_topo:
                 click.echo(
@@ -234,10 +230,7 @@ def peers(ctx: click.Context) -> None:
         f"  {'Hostname':<20s} {'Severity':<10s} {'Findings':<10s} "
         f"{'Governor':<10s} {'Last Heartbeat'}"
     )
-    click.echo(
-        f"  {'-' * 19:<20s} {'-' * 9:<10s} {'-' * 9:<10s} "
-        f"{'-' * 9:<10s} {'-' * 19}"
-    )
+    click.echo(f"  {'-' * 19:<20s} {'-' * 9:<10s} {'-' * 9:<10s} {'-' * 9:<10s} {'-' * 19}")
     for p in all_peers:
         click.echo(
             f"  {p['peer_hostname']:<20s} {(p['peer_severity'] or 'unknown'):<10s} "

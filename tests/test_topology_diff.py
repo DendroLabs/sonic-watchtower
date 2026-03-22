@@ -116,7 +116,9 @@ class TestTopologyDiff:
         assert changes == []
 
     def test_reads_from_store_when_no_lldp_provided(
-        self, analyzer: TopologyDiffAnalyzer, topology: TopologyStore,
+        self,
+        analyzer: TopologyDiffAnalyzer,
+        topology: TopologyStore,
     ) -> None:
         topology.update_neighbor("Ethernet0", "spine-1", "Ethernet4")
         # First call sets baseline from store

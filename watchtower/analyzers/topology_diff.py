@@ -75,32 +75,40 @@ class TopologyDiffAnalyzer(BaseAnalyzer):
         # Check for new and changed neighbors
         for port, new_info in current.items():
             if port not in old:
-                changes.append(TopologyChange(
-                    change_type="neighbor_added",
-                    local_port=port,
-                    neighbor_hostname=new_info["neighbor_hostname"],
-                    neighbor_port=new_info["neighbor_port"],
-                ))
-            elif (old[port]["neighbor_hostname"] != new_info["neighbor_hostname"]
-                  or old[port]["neighbor_port"] != new_info["neighbor_port"]):
-                changes.append(TopologyChange(
-                    change_type="neighbor_changed",
-                    local_port=port,
-                    neighbor_hostname=new_info["neighbor_hostname"],
-                    neighbor_port=new_info["neighbor_port"],
-                    old_neighbor_hostname=old[port]["neighbor_hostname"],
-                    old_neighbor_port=old[port]["neighbor_port"],
-                ))
+                changes.append(
+                    TopologyChange(
+                        change_type="neighbor_added",
+                        local_port=port,
+                        neighbor_hostname=new_info["neighbor_hostname"],
+                        neighbor_port=new_info["neighbor_port"],
+                    )
+                )
+            elif (
+                old[port]["neighbor_hostname"] != new_info["neighbor_hostname"]
+                or old[port]["neighbor_port"] != new_info["neighbor_port"]
+            ):
+                changes.append(
+                    TopologyChange(
+                        change_type="neighbor_changed",
+                        local_port=port,
+                        neighbor_hostname=new_info["neighbor_hostname"],
+                        neighbor_port=new_info["neighbor_port"],
+                        old_neighbor_hostname=old[port]["neighbor_hostname"],
+                        old_neighbor_port=old[port]["neighbor_port"],
+                    )
+                )
 
         # Check for removed neighbors
         for port, old_info in old.items():
             if port not in current:
-                changes.append(TopologyChange(
-                    change_type="neighbor_removed",
-                    local_port=port,
-                    neighbor_hostname=old_info["neighbor_hostname"],
-                    neighbor_port=old_info["neighbor_port"],
-                ))
+                changes.append(
+                    TopologyChange(
+                        change_type="neighbor_removed",
+                        local_port=port,
+                        neighbor_hostname=old_info["neighbor_hostname"],
+                        neighbor_port=old_info["neighbor_port"],
+                    )
+                )
 
         self._last_snapshot = current
         return changes

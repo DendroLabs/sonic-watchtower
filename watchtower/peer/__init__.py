@@ -85,14 +85,10 @@ class PeerManager:
             return
 
         tls = self._config.peer.tls
-        tls_available = all(
-            Path(p).exists() for p in [tls.cert, tls.key, tls.ca]
-        )
+        tls_available = all(Path(p).exists() for p in [tls.cert, tls.key, tls.ca])
 
         if not tls_available:
-            logger.warning(
-                "TLS certs not found -- peer protocol disabled (local-only mode)"
-            )
+            logger.warning("TLS certs not found -- peer protocol disabled (local-only mode)")
             self._enabled = False
             return
 
@@ -128,9 +124,7 @@ class PeerManager:
             self._server.add_insecure_port(f"[::]:{port}")
 
         self._server.start()
-        logger.info(
-            "Peer gRPC server started on port %d (TLS=%s)", port, tls_available
-        )
+        logger.info("Peer gRPC server started on port %d (TLS=%s)", port, tls_available)
 
     def stop(self) -> None:
         """Shut down the gRPC server and close all client connections."""
@@ -166,9 +160,7 @@ class PeerManager:
     def _connect_peer(self, endpoint: PeerEndpoint) -> None:
         """Create a client connection to a discovered peer."""
         tls = self._config.peer.tls
-        tls_available = all(
-            Path(p).exists() for p in [tls.cert, tls.key, tls.ca]
-        )
+        tls_available = all(Path(p).exists() for p in [tls.cert, tls.key, tls.ca])
 
         try:
             client = PeerClient(
@@ -180,7 +172,9 @@ class PeerManager:
             self._clients[endpoint.hostname] = client
             logger.info(
                 "Connected to peer: %s (%s:%d)",
-                endpoint.hostname, endpoint.address, endpoint.port,
+                endpoint.hostname,
+                endpoint.address,
+                endpoint.port,
             )
         except Exception:
             logger.warning("Failed to connect to peer: %s", endpoint.hostname)
@@ -243,7 +237,10 @@ class PeerManager:
             )
 
     def share_event(
-        self, event_type: str, port: str, summary: str,
+        self,
+        event_type: str,
+        port: str,
+        summary: str,
         metrics: dict[str, str] | None = None,
     ) -> None:
         """Share a local event with all direct peers (1-hop only)."""
@@ -251,6 +248,7 @@ class PeerManager:
             return
 
         from datetime import UTC, datetime
+
         timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         for client in self._clients.values():
@@ -264,7 +262,10 @@ class PeerManager:
             )
 
     def share_finding(
-        self, finding_id: str, severity: str, summary: str,
+        self,
+        finding_id: str,
+        severity: str,
+        summary: str,
         affected_scope: str = "",
     ) -> None:
         """Share a new local finding with peers using TTL-limited gossip."""
@@ -278,6 +279,7 @@ class PeerManager:
         self._mark_seen(finding_id)
 
         from datetime import UTC, datetime
+
         timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         for client in self._clients.values():
@@ -299,8 +301,13 @@ class PeerManager:
     # ── PeerMessageHandler interface (called by WatchtowerServicer) ──
 
     def handle_heartbeat(
-        self, hostname: str, role: str, uptime_seconds: int,
-        current_severity: str, active_finding_count: int, governor_state: str,
+        self,
+        hostname: str,
+        role: str,
+        uptime_seconds: int,
+        current_severity: str,
+        active_finding_count: int,
+        governor_state: str,
     ) -> dict[str, Any]:
         self._peer_state.update_heartbeat(
             hostname=hostname,
@@ -319,8 +326,13 @@ class PeerManager:
         }
 
     def handle_event(
-        self, hostname: str, timestamp: str, event_type: str,
-        affected_port: str, summary: str, metrics: dict[str, str],
+        self,
+        hostname: str,
+        timestamp: str,
+        event_type: str,
+        affected_port: str,
+        summary: str,
+        metrics: dict[str, str],
     ) -> bool:
         self._events.record(
             source="peer",
@@ -338,15 +350,23 @@ class PeerManager:
         return True
 
     def handle_topology(
-        self, hostname: str, neighbors: list[dict[str, str]],
+        self,
+        hostname: str,
+        neighbors: list[dict[str, str]],
     ) -> bool:
         self._peer_state.update_peer_topology(hostname, neighbors)
         return True
 
     def handle_finding(
-        self, hostname: str, origin_hostname: str, timestamp: str,
-        severity: str, summary: str, affected_scope: str,
-        ttl: int, finding_id: str,
+        self,
+        hostname: str,
+        origin_hostname: str,
+        timestamp: str,
+        severity: str,
+        summary: str,
+        affected_scope: str,
+        ttl: int,
+        finding_id: str,
     ) -> tuple[bool, bool]:
         if self._has_seen(finding_id):
             return True, True
@@ -387,9 +407,15 @@ class PeerManager:
     # ── Internal helpers ──
 
     def _gossip_finding(
-        self, sender_hostname: str, origin_hostname: str,
-        timestamp: str, severity: str, summary: str,
-        affected_scope: str, ttl: int, finding_id: str,
+        self,
+        sender_hostname: str,
+        origin_hostname: str,
+        timestamp: str,
+        severity: str,
+        summary: str,
+        affected_scope: str,
+        ttl: int,
+        finding_id: str,
     ) -> None:
         """Re-share a received finding to other peers (excluding sender)."""
         for peer_hostname, client in self._clients.items():

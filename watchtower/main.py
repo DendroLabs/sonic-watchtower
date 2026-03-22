@@ -202,7 +202,9 @@ class WatchtowerDaemon:
                 detail=finding_data["detail"],
             )
             self.syslog.emit_finding(
-                finding_id, finding_data["severity"], finding_data["summary"],
+                finding_id,
+                finding_data["severity"],
+                finding_data["summary"],
             )
 
         # 9. Topology diff: detect neighbor changes
@@ -222,7 +224,9 @@ class WatchtowerDaemon:
                 detail=finding_data["detail"],
             )
             self.syslog.emit_finding(
-                finding_id, finding_data["severity"], finding_data["summary"],
+                finding_id,
+                finding_data["severity"],
+                finding_data["summary"],
             )
             self.peer_manager.share_finding(
                 finding_id=finding_id,
@@ -264,7 +268,8 @@ class WatchtowerDaemon:
             self.syslog.emit_finding(finding_id, finding_data["severity"], finding_data["summary"])
             logger.info("Finding %s: %s", finding_id, finding_data["summary"])
             self.peer_manager.share_event(
-                event_type="anomaly", port=anomaly.port,
+                event_type="anomaly",
+                port=anomaly.port,
                 summary=finding_data["summary"],
             )
             self.peer_manager.share_finding(
@@ -309,7 +314,8 @@ class WatchtowerDaemon:
                     finding_id, finding_data["severity"], finding_data["summary"]
                 )
                 self.peer_manager.share_event(
-                    event_type="bgp_change", port="",
+                    event_type="bgp_change",
+                    port="",
                     summary=finding_data["summary"],
                 )
                 self.peer_manager.share_finding(
@@ -348,7 +354,8 @@ class WatchtowerDaemon:
                     finding_id, finding_data["severity"], finding_data["summary"]
                 )
                 self.peer_manager.share_event(
-                    event_type="link_change", port=port_name,
+                    event_type="link_change",
+                    port=port_name,
                     summary=finding_data["summary"],
                 )
                 self.peer_manager.share_finding(
@@ -394,7 +401,8 @@ class WatchtowerDaemon:
                     finding_id, finding_data["severity"], finding_data["summary"]
                 )
                 self.peer_manager.share_event(
-                    event_type="optic_degradation", port=port_name,
+                    event_type="optic_degradation",
+                    port=port_name,
                     summary=finding_data["summary"],
                 )
                 self.peer_manager.share_finding(

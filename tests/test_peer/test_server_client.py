@@ -24,15 +24,24 @@ class MockHandler:
         self.seen_finding_ids: set[str] = set()
 
     def handle_heartbeat(
-        self, hostname: str, role: str, uptime_seconds: int,
-        current_severity: str, active_finding_count: int, governor_state: str,
+        self,
+        hostname: str,
+        role: str,
+        uptime_seconds: int,
+        current_severity: str,
+        active_finding_count: int,
+        governor_state: str,
     ) -> dict[str, Any]:
-        self.heartbeats.append({
-            "hostname": hostname, "role": role, "uptime_seconds": uptime_seconds,
-            "current_severity": current_severity,
-            "active_finding_count": active_finding_count,
-            "governor_state": governor_state,
-        })
+        self.heartbeats.append(
+            {
+                "hostname": hostname,
+                "role": role,
+                "uptime_seconds": uptime_seconds,
+                "current_severity": current_severity,
+                "active_finding_count": active_finding_count,
+                "governor_state": governor_state,
+            }
+        )
         return {
             "hostname": "test-server",
             "role": "leaf",
@@ -43,35 +52,59 @@ class MockHandler:
         }
 
     def handle_event(
-        self, hostname: str, timestamp: str, event_type: str,
-        affected_port: str, summary: str, metrics: dict[str, str],
+        self,
+        hostname: str,
+        timestamp: str,
+        event_type: str,
+        affected_port: str,
+        summary: str,
+        metrics: dict[str, str],
     ) -> bool:
-        self.events.append({
-            "hostname": hostname, "timestamp": timestamp,
-            "event_type": event_type, "affected_port": affected_port,
-            "summary": summary, "metrics": metrics,
-        })
+        self.events.append(
+            {
+                "hostname": hostname,
+                "timestamp": timestamp,
+                "event_type": event_type,
+                "affected_port": affected_port,
+                "summary": summary,
+                "metrics": metrics,
+            }
+        )
         return True
 
     def handle_topology(
-        self, hostname: str, neighbors: list[dict[str, str]],
+        self,
+        hostname: str,
+        neighbors: list[dict[str, str]],
     ) -> bool:
         self.topologies.append({"hostname": hostname, "neighbors": neighbors})
         return True
 
     def handle_finding(
-        self, hostname: str, origin_hostname: str, timestamp: str,
-        severity: str, summary: str, affected_scope: str,
-        ttl: int, finding_id: str,
+        self,
+        hostname: str,
+        origin_hostname: str,
+        timestamp: str,
+        severity: str,
+        summary: str,
+        affected_scope: str,
+        ttl: int,
+        finding_id: str,
     ) -> tuple[bool, bool]:
         already_seen = finding_id in self.seen_finding_ids
         self.seen_finding_ids.add(finding_id)
-        self.findings.append({
-            "hostname": hostname, "origin_hostname": origin_hostname,
-            "timestamp": timestamp, "severity": severity,
-            "summary": summary, "affected_scope": affected_scope,
-            "ttl": ttl, "finding_id": finding_id,
-        })
+        self.findings.append(
+            {
+                "hostname": hostname,
+                "origin_hostname": origin_hostname,
+                "timestamp": timestamp,
+                "severity": severity,
+                "summary": summary,
+                "affected_scope": affected_scope,
+                "ttl": ttl,
+                "finding_id": finding_id,
+            }
+        )
         return True, already_seen
 
 
@@ -109,7 +142,9 @@ def client(server_and_client: tuple[grpc.Server, PeerClient]) -> PeerClient:
 
 class TestHeartbeat:
     def test_heartbeat_exchange(
-        self, client: PeerClient, handler: MockHandler,
+        self,
+        client: PeerClient,
+        handler: MockHandler,
     ) -> None:
         result = client.send_heartbeat(
             hostname="switch-a",
@@ -140,7 +175,9 @@ class TestHeartbeat:
 
 class TestShareEvent:
     def test_share_event(
-        self, client: PeerClient, handler: MockHandler,
+        self,
+        client: PeerClient,
+        handler: MockHandler,
     ) -> None:
         accepted = client.share_event(
             hostname="switch-a",
@@ -159,7 +196,9 @@ class TestShareEvent:
         assert ev["metrics"] == {"old_state": "up", "new_state": "down"}
 
     def test_share_event_no_metrics(
-        self, client: PeerClient, handler: MockHandler,
+        self,
+        client: PeerClient,
+        handler: MockHandler,
     ) -> None:
         accepted = client.share_event(
             hostname="switch-a",
@@ -187,23 +226,36 @@ class TestShareEvent:
 
 class TestShareTopology:
     def test_share_topology(
-        self, client: PeerClient, handler: MockHandler,
+        self,
+        client: PeerClient,
+        handler: MockHandler,
     ) -> None:
         neighbors = [
-            {"local_port": "Ethernet0", "remote_host": "spine-1",
-             "remote_port": "Ethernet4", "link_state": "up"},
-            {"local_port": "Ethernet48", "remote_host": "switch-b",
-             "remote_port": "Ethernet12", "link_state": "up"},
+            {
+                "local_port": "Ethernet0",
+                "remote_host": "spine-1",
+                "remote_port": "Ethernet4",
+                "link_state": "up",
+            },
+            {
+                "local_port": "Ethernet48",
+                "remote_host": "switch-b",
+                "remote_port": "Ethernet12",
+                "link_state": "up",
+            },
         ]
         accepted = client.share_topology(
-            hostname="switch-a", neighbors=neighbors,
+            hostname="switch-a",
+            neighbors=neighbors,
         )
         assert accepted is True
         assert len(handler.topologies) == 1
         assert len(handler.topologies[0]["neighbors"]) == 2
 
     def test_share_empty_topology(
-        self, client: PeerClient, handler: MockHandler,
+        self,
+        client: PeerClient,
+        handler: MockHandler,
     ) -> None:
         accepted = client.share_topology(hostname="switch-a", neighbors=[])
         assert accepted is True
@@ -211,7 +263,9 @@ class TestShareTopology:
 
 class TestShareFinding:
     def test_share_finding(
-        self, client: PeerClient, handler: MockHandler,
+        self,
+        client: PeerClient,
+        handler: MockHandler,
     ) -> None:
         accepted, already_seen = client.share_finding(
             hostname="switch-a",
@@ -228,33 +282,49 @@ class TestShareFinding:
         assert len(handler.findings) == 1
 
     def test_share_finding_dedup(
-        self, client: PeerClient, handler: MockHandler,
+        self,
+        client: PeerClient,
+        handler: MockHandler,
     ) -> None:
         # First share
         client.share_finding(
-            hostname="switch-a", origin_hostname="switch-a",
-            timestamp="2026-03-21T14:00:00Z", severity="warning",
-            summary="test", affected_scope="Ethernet48",
-            ttl=3, finding_id="f-20260321-0001",
+            hostname="switch-a",
+            origin_hostname="switch-a",
+            timestamp="2026-03-21T14:00:00Z",
+            severity="warning",
+            summary="test",
+            affected_scope="Ethernet48",
+            ttl=3,
+            finding_id="f-20260321-0001",
         )
         # Second share of same finding
         accepted, already_seen = client.share_finding(
-            hostname="switch-b", origin_hostname="switch-a",
-            timestamp="2026-03-21T14:00:00Z", severity="warning",
-            summary="test", affected_scope="Ethernet48",
-            ttl=2, finding_id="f-20260321-0001",
+            hostname="switch-b",
+            origin_hostname="switch-a",
+            timestamp="2026-03-21T14:00:00Z",
+            severity="warning",
+            summary="test",
+            affected_scope="Ethernet48",
+            ttl=2,
+            finding_id="f-20260321-0001",
         )
         assert accepted is True
         assert already_seen is True
 
     def test_share_finding_with_ttl_1(
-        self, client: PeerClient, handler: MockHandler,
+        self,
+        client: PeerClient,
+        handler: MockHandler,
     ) -> None:
         accepted, already_seen = client.share_finding(
-            hostname="switch-c", origin_hostname="switch-a",
-            timestamp="2026-03-21T14:00:00Z", severity="critical",
-            summary="Optic failure", affected_scope="Ethernet0",
-            ttl=1, finding_id="f-20260321-0002",
+            hostname="switch-c",
+            origin_hostname="switch-a",
+            timestamp="2026-03-21T14:00:00Z",
+            severity="critical",
+            summary="Optic failure",
+            affected_scope="Ethernet0",
+            ttl=1,
+            finding_id="f-20260321-0002",
         )
         assert accepted is True
         assert already_seen is False
@@ -263,10 +333,14 @@ class TestShareFinding:
     def test_share_finding_to_dead_server(self) -> None:
         client = PeerClient(hostname="dead", address="localhost", port=1)
         accepted, already_seen = client.share_finding(
-            hostname="switch-a", origin_hostname="switch-a",
-            timestamp="2026-03-21T14:00:00Z", severity="warning",
-            summary="test", affected_scope="Ethernet0",
-            ttl=3, finding_id="f-20260321-0003",
+            hostname="switch-a",
+            origin_hostname="switch-a",
+            timestamp="2026-03-21T14:00:00Z",
+            severity="warning",
+            summary="test",
+            affected_scope="Ethernet0",
+            ttl=3,
+            finding_id="f-20260321-0003",
             timeout=0.5,
         )
         assert accepted is False
@@ -276,19 +350,29 @@ class TestShareFinding:
 
 class TestMultipleRPCs:
     def test_sequential_rpcs(
-        self, client: PeerClient, handler: MockHandler,
+        self,
+        client: PeerClient,
+        handler: MockHandler,
     ) -> None:
         """Multiple RPCs to the same server in sequence."""
         client.send_heartbeat(hostname="switch-a")
         client.share_event(
-            hostname="switch-a", timestamp="2026-03-21T14:00:00Z",
-            event_type="anomaly", affected_port="Ethernet0", summary="test",
+            hostname="switch-a",
+            timestamp="2026-03-21T14:00:00Z",
+            event_type="anomaly",
+            affected_port="Ethernet0",
+            summary="test",
         )
         client.share_topology(hostname="switch-a", neighbors=[])
         client.share_finding(
-            hostname="switch-a", origin_hostname="switch-a",
-            timestamp="2026-03-21T14:00:00Z", severity="info",
-            summary="test", affected_scope="", ttl=1, finding_id="f-0001",
+            hostname="switch-a",
+            origin_hostname="switch-a",
+            timestamp="2026-03-21T14:00:00Z",
+            severity="info",
+            summary="test",
+            affected_scope="",
+            ttl=1,
+            finding_id="f-0001",
         )
         assert len(handler.heartbeats) == 1
         assert len(handler.events) == 1
