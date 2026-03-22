@@ -52,9 +52,22 @@ CREATE INDEX IF NOT EXISTS idx_findings_active ON findings(active);
 CREATE INDEX IF NOT EXISTS idx_findings_severity ON findings(severity);
 
 CREATE TABLE IF NOT EXISTS peer_state (
-    peer_hostname       TEXT PRIMARY KEY,
-    last_heartbeat      TEXT,
-    last_event_summary  TEXT,
-    peer_severity       TEXT CHECK (peer_severity IN ('ok', 'info', 'warning', 'critical')),
-    updated_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+    peer_hostname           TEXT PRIMARY KEY,
+    last_heartbeat          TEXT,
+    last_event_summary      TEXT,
+    peer_severity           TEXT CHECK (peer_severity IN ('ok', 'info', 'warning', 'critical')),
+    role                    TEXT DEFAULT 'leaf',
+    active_finding_count    INTEGER DEFAULT 0,
+    governor_state          TEXT DEFAULT 'unknown',
+    updated_at              TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS peer_topology (
+    peer_hostname       TEXT NOT NULL,
+    local_port          TEXT NOT NULL,
+    neighbor_hostname   TEXT NOT NULL,
+    neighbor_port       TEXT NOT NULL,
+    link_state          TEXT DEFAULT 'up',
+    updated_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    PRIMARY KEY (peer_hostname, local_port, neighbor_hostname, neighbor_port)
 );

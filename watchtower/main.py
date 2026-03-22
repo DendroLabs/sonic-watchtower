@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from watchtower.analyzers.baseline_compare import AnomalyResult, BaselineCompareAnalyzer
+from watchtower.analyzers.peer_correlate import PeerCorrelateAnalyzer
+from watchtower.analyzers.topology_diff import TopologyDiffAnalyzer
 from watchtower.collectors.base import RedisReader
 from watchtower.collectors.bgp_state import BGPStateCollector
 from watchtower.collectors.interface_state import InterfaceStateCollector
@@ -24,9 +26,12 @@ from watchtower.llm.fallback import (
     finding_from_bgp_change,
     finding_from_link_change,
     finding_from_optic_degradation,
+    finding_from_peer_correlation,
+    finding_from_topology_change,
 )
 from watchtower.output.banner import BannerWriter
 from watchtower.output.syslog_emitter import SyslogEmitter
+from watchtower.peer import PeerManager
 from watchtower.store.baselines import BaselineStore
 from watchtower.store.events import EventStore
 from watchtower.store.findings import FindingsStore
@@ -65,13 +70,25 @@ class WatchtowerDaemon:
         self.bgp_state = BGPStateCollector(readers=self._readers)
         self.optic_health = OpticHealthCollector(readers=self._readers)
 
-        # Analyzer
+        # Analyzers
         self.baseline_analyzer = BaselineCompareAnalyzer(
             self.journal, anomaly_config=config.anomaly
         )
+        self.peer_correlate = PeerCorrelateAnalyzer(self.journal, self.topology_store)
+        self.topology_diff = TopologyDiffAnalyzer(self.journal, self.topology_store)
 
         # Governor
         self.governor = ResourceGovernor(config.resources)
+
+        # Peer protocol
+        self.peer_manager = PeerManager(
+            config=config,
+            journal=self.journal,
+            topology_store=self.topology_store,
+            events=self.events,
+            findings=self.findings,
+            governor=self.governor,
+        )
 
         # Output
         self.syslog = SyslogEmitter(config.syslog, dry_run=syslog_dry_run)
@@ -93,6 +110,8 @@ class WatchtowerDaemon:
             self.config.poll_interval,
         )
 
+        self.peer_manager.start()
+
         while self._running:
             cycle_start = time.time()
             try:
@@ -107,6 +126,7 @@ class WatchtowerDaemon:
             if sleep_time > 0 and self._running:
                 time.sleep(sleep_time)
 
+        self.peer_manager.stop()
         logger.info("Watchtower stopped.")
         self.journal.close()
 
@@ -139,6 +159,9 @@ class WatchtowerDaemon:
                     neighbor["neighbor_port"],
                 )
 
+        # 2a. Refresh peer connections from LLDP
+        self.peer_manager.refresh_peers()
+
         # 3. Detect anomalies in port stats
         if port_stats:
             for port_name, stats in port_stats.items():
@@ -159,12 +182,60 @@ class WatchtowerDaemon:
         if optic_data:
             self._check_optic_health(optic_data, lldp_data)
 
-        # 7. Update banner with current active findings
+        # 7. Peer protocol: heartbeats and topology sharing
+        self.peer_manager.send_heartbeats()
+        self.peer_manager.share_topology_fragment()
+
+        # 8. Peer correlation: match local events with peer events
+        correlations = self.peer_correlate.analyze()
+        for corr in correlations:
+            finding_data = finding_from_peer_correlation(
+                local_event=corr.local_event,
+                peer_event=corr.peer_event,
+                peer_hostname=corr.peer_hostname,
+                local_port=corr.local_port,
+                peer_port=corr.peer_port,
+            )
+            finding_id = self.findings.create(
+                severity=finding_data["severity"],
+                summary=finding_data["summary"],
+                detail=finding_data["detail"],
+            )
+            self.syslog.emit_finding(
+                finding_id, finding_data["severity"], finding_data["summary"],
+            )
+
+        # 9. Topology diff: detect neighbor changes
+        topo_changes = self.topology_diff.analyze(current_lldp=lldp_data)
+        for change in topo_changes:
+            finding_data = finding_from_topology_change(
+                change_type=change.change_type,
+                local_port=change.local_port,
+                neighbor_hostname=change.neighbor_hostname,
+                neighbor_port=change.neighbor_port,
+                old_neighbor_hostname=change.old_neighbor_hostname,
+                old_neighbor_port=change.old_neighbor_port,
+            )
+            finding_id = self.findings.create(
+                severity=finding_data["severity"],
+                summary=finding_data["summary"],
+                detail=finding_data["detail"],
+            )
+            self.syslog.emit_finding(
+                finding_id, finding_data["severity"], finding_data["summary"],
+            )
+            self.peer_manager.share_finding(
+                finding_id=finding_id,
+                severity=finding_data["severity"],
+                summary=finding_data["summary"],
+                affected_scope=change.local_port,
+            )
+
+        # 10. Update banner with current active findings
         active = self.findings.get_active()
         self.banner.write(active)
 
-        # 8. Prune old data periodically (every ~100 cycles)
-        # Using a simple modulo on cycle count isn't ideal, but works for Phase 1
+        # 11. Prune old data periodically
         self.journal.prune(
             detail_days=self.config.journal.retention_detail_days,
             summary_days=self.config.journal.retention_summary_days,
@@ -192,6 +263,16 @@ class WatchtowerDaemon:
             )
             self.syslog.emit_finding(finding_id, finding_data["severity"], finding_data["summary"])
             logger.info("Finding %s: %s", finding_id, finding_data["summary"])
+            self.peer_manager.share_event(
+                event_type="anomaly", port=anomaly.port,
+                summary=finding_data["summary"],
+            )
+            self.peer_manager.share_finding(
+                finding_id=finding_id,
+                severity=finding_data["severity"],
+                summary=finding_data["summary"],
+                affected_scope=anomaly.port,
+            )
         else:
             self.governor.defer_investigation()
 
@@ -227,6 +308,15 @@ class WatchtowerDaemon:
                 self.syslog.emit_finding(
                     finding_id, finding_data["severity"], finding_data["summary"]
                 )
+                self.peer_manager.share_event(
+                    event_type="bgp_change", port="",
+                    summary=finding_data["summary"],
+                )
+                self.peer_manager.share_finding(
+                    finding_id=finding_id,
+                    severity=finding_data["severity"],
+                    summary=finding_data["summary"],
+                )
 
             self._last_bgp_states[neighbor_ip] = new_state
 
@@ -256,6 +346,16 @@ class WatchtowerDaemon:
                 )
                 self.syslog.emit_finding(
                     finding_id, finding_data["severity"], finding_data["summary"]
+                )
+                self.peer_manager.share_event(
+                    event_type="link_change", port=port_name,
+                    summary=finding_data["summary"],
+                )
+                self.peer_manager.share_finding(
+                    finding_id=finding_id,
+                    severity=finding_data["severity"],
+                    summary=finding_data["summary"],
+                    affected_scope=port_name,
                 )
 
             self._last_oper_states[port_name] = new_oper
@@ -292,6 +392,16 @@ class WatchtowerDaemon:
                 )
                 self.syslog.emit_finding(
                     finding_id, finding_data["severity"], finding_data["summary"]
+                )
+                self.peer_manager.share_event(
+                    event_type="optic_degradation", port=port_name,
+                    summary=finding_data["summary"],
+                )
+                self.peer_manager.share_finding(
+                    finding_id=finding_id,
+                    severity=finding_data["severity"],
+                    summary=finding_data["summary"],
+                    affected_scope=port_name,
                 )
 
     @staticmethod

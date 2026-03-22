@@ -90,6 +90,67 @@ def finding_from_link_change(port: str, new_state: str, neighbor_info: dict | No
     return {"severity": severity, "summary": summary, "detail": summary}
 
 
+def finding_from_peer_correlation(
+    local_event: dict, peer_event: dict, peer_hostname: str, local_port: str, peer_port: str,
+) -> dict:
+    """Generate a finding when local and peer events correlate on the same link."""
+    local_cat = local_event.get("category", "event")
+    peer_raw = peer_event.get("raw_data", {})
+    peer_summary = peer_raw.get("summary", "event") if isinstance(peer_raw, dict) else "event"
+
+    summary = (
+        f"Correlated event on {local_port}: local {local_cat} matches "
+        f"peer {peer_hostname} ({peer_summary}) on {peer_port}."
+    )
+
+    detail = (
+        f"Local event ({local_cat}) on {local_port} occurred around the same time as "
+        f"a peer event from {peer_hostname} on the same link ({peer_port}). "
+        f"This suggests the issue affects both ends of the link."
+    )
+
+    severity = local_event.get("severity", "info")
+    if severity == "info":
+        severity = "warning"
+
+    return {"severity": severity, "summary": summary, "detail": detail}
+
+
+def finding_from_topology_change(
+    change_type: str, local_port: str, neighbor_hostname: str, neighbor_port: str,
+    old_neighbor_hostname: str | None = None, old_neighbor_port: str | None = None,
+) -> dict:
+    """Generate a finding for a topology change."""
+    if change_type == "neighbor_added":
+        severity = "info"
+        summary = f"New neighbor on {local_port}: {neighbor_hostname}:{neighbor_port}."
+    elif change_type == "neighbor_removed":
+        severity = "warning"
+        summary = f"Neighbor lost on {local_port}: {neighbor_hostname}:{neighbor_port}."
+    elif change_type == "neighbor_changed":
+        severity = "warning"
+        summary = (
+            f"Neighbor changed on {local_port}: "
+            f"{old_neighbor_hostname}:{old_neighbor_port} -> "
+            f"{neighbor_hostname}:{neighbor_port}."
+        )
+    else:
+        severity = "info"
+        summary = f"Topology change on {local_port}: {neighbor_hostname}:{neighbor_port}."
+
+    return {"severity": severity, "summary": summary, "detail": summary}
+
+
+def finding_from_peer_down(peer_hostname: str, last_seen: str) -> dict:
+    """Generate a finding when a peer goes unreachable."""
+    summary = f"Peer {peer_hostname} unreachable (last seen: {last_seen})."
+    detail = (
+        f"Watchtower on {peer_hostname} has not sent a heartbeat since {last_seen}. "
+        f"The peer may be down, restarting, or experiencing network issues."
+    )
+    return {"severity": "warning", "summary": summary, "detail": detail}
+
+
 def finding_from_optic_degradation(
     port: str,
     rx_power_avg: float,

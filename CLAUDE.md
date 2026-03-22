@@ -87,7 +87,7 @@ sonic-watchtower/
 
 ## Current Status
 
-**Phase 1 is complete.** 132 tests passing across 8 test files.
+**Phase 1 and Phase 2 are complete.** 239 tests passing across 13 test files.
 
 | Component | Status | Tests |
 |-----------|--------|-------|
@@ -97,59 +97,19 @@ sonic-watchtower/
 | Analyzers (baseline_compare) + template findings (fallback.py) | Done | 17 |
 | Resource Governor | Done | 18 |
 | Output (syslog_emitter, banner) | Done | 12 |
-| CLI (`watchtower show findings/topology/events/resources/baselines`) | Done | 12 |
-| Main event loop + Dockerfile + docker-compose.yml | Done | 10 |
+| CLI (`watchtower show findings/topology/events/resources/baselines/peers`) | Done | 17 |
+| Main event loop + Dockerfile + docker-compose.yml | Done | 15 |
+| Peer protocol (gRPC server/client, discovery, PeerManager) | Done | 55 |
+| Peer analyzers (peer_correlate, topology_diff) | Done | 17 |
+| Collector robustness | Done | 26 |
 
-## Next Steps: Community Readiness (pre-Phase 2)
+## Next Steps: Phase 3 (LLM Integration)
 
-Before sharing or starting Phase 2, these items need to be done:
-
-### 1. Repo Setup (do first)
-- `git init` and initial commit
-- `.gitignore` (Python, venv, __pycache__, .db files, .pyc)
-- `LICENSE` — Apache 2.0 (standard for SONiC ecosystem)
-- `README.md` — Short, compelling: what it is, why it matters, quickstart, architecture diagram, demo output
-- `CONTRIBUTING.md` — How to contribute, dev setup, test instructions
-
-### 2. Code Quality Tooling
-- Add `ruff` for linting (add to pyproject.toml `[tool.ruff]`)
-- Add `mypy` for type checking (add to pyproject.toml `[tool.mypy]`)
-- Run both and fix all issues
-- Add `pre-commit` config (`.pre-commit-config.yaml`) with ruff + mypy hooks
-
-### 3. CI Pipeline
-- `.github/workflows/ci.yml` — GitHub Actions running:
-  - `ruff check .`
-  - `mypy watchtower/`
-  - `pytest tests/ -v`
-  - Matrix: Python 3.11, 3.12, 3.13
-- Badge in README for CI status
-
-### 4. Robustness Testing (critical)
-- Collectors must handle gracefully:
-  - Missing Redis keys (key exists but hash fields are absent)
-  - Empty hashes (key exists, no fields)
-  - Malformed data (non-numeric values in counter fields)
-  - Redis connection failures
-- Add `tests/test_collector_robustness.py` with these edge cases
-
-### 5. SONiC VS Validation (most important for credibility)
-- Pull the SONiC VS (virtual switch) Docker image
-- Start it and inspect actual Redis key patterns:
-  - `redis-cli -n 0 KEYS '*'` (APPL_DB)
-  - `redis-cli -n 2 KEYS '*'` (COUNTERS_DB)
-  - `redis-cli -n 6 KEYS '*'` (STATE_DB)
-- Compare against our mock fixtures
-- Fix any key pattern mismatches
-- Document actual key patterns discovered in `docs/sonic_redis_keys.md`
-- Create a SONiC VS integration test that runs against the real image
-
-### Priority Order
-1. Repo setup (git, LICENSE, README) — 30 min
-2. Code quality (ruff, mypy) — 1 hour
-3. Robustness tests — 1 hour
-4. CI pipeline — 30 min
-5. SONiC VS validation — 2-3 hours (depends on image setup)
+- llama-cpp-python runtime with quantized model (Qwen2-0.5B or similar)
+- Tool-use wrapper for LLM-driven investigation
+- Natural language findings (replacing template fallback)
+- `watchtower ask` CLI command
+- Graceful fallback to templates if LLM unavailable
 
 ## Development Notes
 

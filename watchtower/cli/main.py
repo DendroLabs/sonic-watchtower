@@ -8,6 +8,7 @@ import click
 
 from watchtower.config import load_config
 from watchtower.governor import ResourceGovernor
+from watchtower.peer.state import PeerStateStore
 from watchtower.store.baselines import BaselineStore
 from watchtower.store.events import EventStore
 from watchtower.store.findings import FindingsStore
@@ -91,19 +92,44 @@ def topology(ctx: click.Context, fabric: bool) -> None:
     store = TopologyStore(journal)
 
     entries = store.get_all()
-    if not entries:
+    if not entries and not fabric:
         click.echo("No topology data available.")
         journal.close()
         return
 
-    click.echo(f"Local topology ({len(entries)} neighbors):\n")
-    click.echo(f"  {'Local Port':<16s} {'Neighbor':<20s} {'Remote Port':<16s} {'Last Seen'}")
-    click.echo(f"  {'-' * 15:<16s} {'-' * 19:<20s} {'-' * 15:<16s} {'-' * 19}")
-    for e in entries:
+    if entries:
+        click.echo(f"Local topology ({len(entries)} neighbors):\n")
         click.echo(
-            f"  {e['local_port']:<16s} {e['neighbor_hostname']:<20s} "
-            f"{e['neighbor_port']:<16s} {e['last_seen']}"
+            f"  {'Local Port':<16s} {'Neighbor':<20s} {'Remote Port':<16s} {'Last Seen'}"
         )
+        click.echo(f"  {'-' * 15:<16s} {'-' * 19:<20s} {'-' * 15:<16s} {'-' * 19}")
+        for e in entries:
+            click.echo(
+                f"  {e['local_port']:<16s} {e['neighbor_hostname']:<20s} "
+                f"{e['neighbor_port']:<16s} {e['last_seen']}"
+            )
+
+    if fabric:
+        peer_state = PeerStateStore(journal)
+        fabric_topo = peer_state.get_fabric_topology()
+        if fabric_topo:
+            click.echo(f"\nPeer topology ({len(fabric_topo)} entries):\n")
+            click.echo(
+                f"  {'Switch':<16s} {'Port':<16s} "
+                f"{'Neighbor':<16s} {'Remote Port':<16s} {'State'}"
+            )
+            click.echo(
+                f"  {'-' * 15:<16s} {'-' * 15:<16s} "
+                f"{'-' * 15:<16s} {'-' * 15:<16s} {'-' * 5}"
+            )
+            for e in fabric_topo:
+                click.echo(
+                    f"  {e['peer_hostname']:<16s} {e['local_port']:<16s} "
+                    f"{e['neighbor_hostname']:<16s} {e['neighbor_port']:<16s} "
+                    f"{e['link_state']}"
+                )
+        elif not entries:
+            click.echo("No topology data available.")
 
     journal.close()
 
@@ -184,6 +210,40 @@ def baselines(ctx: click.Context, port: str) -> None:
             f"    hour={e['hour_of_week']:>3d}  "
             f"p50={e['p50']:.1f}  p95={e['p95']:.1f}  p99={e['p99']:.1f}  "
             f"samples={e['sample_count']}"
+        )
+
+    journal.close()
+
+
+@show.command()
+@click.pass_context
+def peers(ctx: click.Context) -> None:
+    """Show status of known peer Watchtower instances."""
+    config = ctx.obj["config"]
+    journal = Journal(config.journal.path)
+    peer_state = PeerStateStore(journal)
+
+    all_peers = peer_state.get_all_peers()
+    if not all_peers:
+        click.echo("No known peers.")
+        journal.close()
+        return
+
+    click.echo(f"Peer status ({len(all_peers)} peers):\n")
+    click.echo(
+        f"  {'Hostname':<20s} {'Severity':<10s} {'Findings':<10s} "
+        f"{'Governor':<10s} {'Last Heartbeat'}"
+    )
+    click.echo(
+        f"  {'-' * 19:<20s} {'-' * 9:<10s} {'-' * 9:<10s} "
+        f"{'-' * 9:<10s} {'-' * 19}"
+    )
+    for p in all_peers:
+        click.echo(
+            f"  {p['peer_hostname']:<20s} {(p['peer_severity'] or 'unknown'):<10s} "
+            f"{p['active_finding_count']:<10d} "
+            f"{(p['governor_state'] or 'unknown'):<10s} "
+            f"{p['last_heartbeat'] or 'never'}"
         )
 
     journal.close()

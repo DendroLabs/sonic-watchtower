@@ -17,7 +17,8 @@ python -m pytest tests/ -v
 ```
 
 All tests use [fakeredis](https://github.com/cunla/fakeredis-py) to simulate
-SONiC Redis databases -- no real switch or Redis instance needed.
+SONiC Redis databases -- no real switch or Redis instance needed. Peer protocol
+tests use in-process gRPC (ephemeral ports, no TLS).
 
 ## Code Style
 
@@ -53,17 +54,33 @@ watchtower/
   config.py            # Configuration management (dataclasses)
   governor.py          # Resource governor (CPU/RAM self-policing)
   collectors/          # Read-only Redis data collectors
+    peer_events.py     # Peer event collector (reads SQLite, not Redis)
   analyzers/           # Baseline comparison and anomaly detection
+    peer_correlate.py  # Cross-switch event correlation
+    topology_diff.py   # LLDP topology change detection
   store/               # SQLite event journal, baselines, findings
   output/              # Syslog emitter and login banner writer
   llm/                 # LLM integration (Phase 3+), template fallback
-  peer/                # gRPC peer protocol (Phase 2+)
+  peer/                # gRPC peer protocol, discovery, PeerManager
+    proto/             # Generated protobuf stubs (committed)
+    server.py          # gRPC servicer (4 RPCs)
+    client.py          # Timeout-protected peer client
+    discovery.py       # LLDP-based peer discovery
+    state.py           # PeerStateStore (peer_state + peer_topology)
+    __init__.py        # PeerManager orchestrator
   cli/                 # Click-based CLI commands
 tests/
   mock_redis/          # JSON fixtures simulating SONiC Redis databases
+  test_peer/           # Peer protocol tests
+    test_state.py      # PeerStateStore tests
+    test_server_client.py  # In-process gRPC tests
+    test_discovery.py  # Peer discovery tests
+    test_peer_manager.py   # PeerManager integration tests
   test_collectors.py   # Collector happy-path tests
   test_collector_robustness.py  # Edge cases and failure modes
   test_analyzers.py    # Analyzer and anomaly detection tests
+  test_peer_correlate.py   # Cross-switch correlation tests
+  test_topology_diff.py    # Topology change detection tests
   test_store.py        # SQLite journal and store tests
   test_governor.py     # Resource governor tests
   test_output.py       # Syslog and banner tests

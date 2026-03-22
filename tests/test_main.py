@@ -175,3 +175,33 @@ class TestDaemonInit:
         daemon = WatchtowerDaemon(config, readers=mock_readers, syslog_dry_run=True)
         assert Path(db_path).parent.exists()
         daemon.journal.close()
+
+    def test_peer_manager_created(self, daemon):
+        assert daemon.peer_manager is not None
+        # Enabled is True from config, but start() hasn't been called
+        # (it's called in run(), not run_once())
+        assert daemon.peer_manager.enabled is True
+
+    def test_peer_manager_disabled_gracefully(self, daemon):
+        """Peer manager should not interfere with poll cycle when disabled."""
+        daemon.run_once()
+        daemon.run_once()
+        # Should work fine -- peer_manager just no-ops
+        active = daemon.findings.get_active()
+        assert len(active) > 0
+
+
+class TestPeerIntegration:
+    def test_poll_cycle_with_peer_analyzers(self, daemon):
+        """Topology diff and peer correlate should run without error."""
+        daemon.run_once()
+        # Second cycle will have topology diff data to compare
+        daemon.run_once()
+        # Should complete without error
+        assert daemon.governor.state.value == "full"
+
+    def test_topology_diff_runs_in_cycle(self, daemon):
+        """Topology diff analyzer should be exercised during poll cycles."""
+        daemon.run_once()
+        # After first cycle, topology_diff has baseline
+        assert daemon.topology_diff._last_snapshot is not None

@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package watchtower;
+
+service WatchtowerPeer {
+  // Bidirectional heartbeat -- each side learns the other's status
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+
+  // Push a local event to a direct peer (1-hop only)
+  rpc ShareEvent(EventShareRequest) returns (EventShareResponse);
+
+  // Push a topology fragment (periodic)
+  rpc ShareTopology(TopologyFragmentRequest) returns (TopologyFragmentResponse);
+
+  // Push a finding with TTL-limited gossip
+  rpc ShareFinding(FindingShareRequest) returns (FindingShareResponse);
+}
+
+message HeartbeatRequest {
+  string hostname = 1;
+  string role = 2;              // "leaf" or "central"
+  uint64 uptime_seconds = 3;
+  string current_severity = 4;  // "ok", "info", "warning", "critical"
+  uint32 active_finding_count = 5;
+  string governor_state = 6;    // "full", "throttled", "paused", "dormant"
+}
+
+message HeartbeatResponse {
+  string hostname = 1;
+  string role = 2;
+  uint64 uptime_seconds = 3;
+  string current_severity = 4;
+  uint32 active_finding_count = 5;
+  string governor_state = 6;
+}
+
+message EventShareRequest {
+  string hostname = 1;
+  string timestamp = 2;         // ISO-8601
+  string event_type = 3;        // "link_change", "bgp_change", "anomaly", "optic_degradation"
+  string affected_port = 4;
+  string summary = 5;
+  map<string, string> metrics = 6;
+}
+
+message EventShareResponse {
+  bool accepted = 1;
+}
+
+message NeighborEntry {
+  string local_port = 1;
+  string remote_host = 2;
+  string remote_port = 3;
+  string link_state = 4;        // "up" or "down"
+}
+
+message TopologyFragmentRequest {
+  string hostname = 1;
+  repeated NeighborEntry neighbors = 2;
+}
+
+message TopologyFragmentResponse {
+  bool accepted = 1;
+}
+
+message FindingShareRequest {
+  string hostname = 1;          // peer sending this message
+  string origin_hostname = 2;   // original source (for gossip tracking)
+  string timestamp = 3;
+  string severity = 4;
+  string summary = 5;
+  string affected_scope = 6;    // ports, prefixes, paths
+  uint32 ttl = 7;               // decremented on each hop, max 3
+  string finding_id = 8;        // for deduplication
+}
+
+message FindingShareResponse {
+  bool accepted = 1;
+  bool already_seen = 2;
+}

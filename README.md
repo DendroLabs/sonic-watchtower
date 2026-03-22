@@ -7,10 +7,11 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 
 Watchtower runs as a Docker container on each SONiC switch. It reads local
-state from Redis, detects anomalies against learned baselines, and produces
-human-readable findings via syslog and the SSH login banner. It **never writes
-to CONFIG_DB, APPL_DB, ASIC_DB, or STATE_DB** -- its only outputs are
-observations.
+state from Redis, detects anomalies against learned baselines, communicates
+with peer Watchtower instances on neighboring switches via gRPC/mTLS, and
+produces human-readable findings via syslog and the SSH login banner. It
+**never writes to CONFIG_DB, APPL_DB, ASIC_DB, or STATE_DB** -- its only
+outputs are observations and peer gossip.
 
 ## Why Watchtower?
 
@@ -28,6 +29,7 @@ deviates from the baseline, operators see it immediately:
 - **Read-only** -- never modifies switch configuration or forwarding state
 - **Cannot cause an outage** -- crash it, restart it, ignore it; the network is fine
 - **Self-policing** -- built-in resource governor throttles before hitting cgroup limits
+- **Distributed** -- peers share events and findings via gRPC/mTLS, auto-discovered via LLDP
 - **Incrementally useful** -- value on a single switch, more with peer correlation
 
 ## Architecture
@@ -48,10 +50,20 @@ deviates from the baseline, operators see it immediately:
 |  |  Watchtower Container                                      |  |
 |  |                                                            |  |
 |  |  Collectors -----> Analyzers -----> Findings               |  |
-|  |  (Redis read)      (baselines)      (syslog + banner)      |  |
+|  |  (Redis read)      (baselines,      (syslog + banner)      |  |
+|  |                     peer correlate,                         |  |
+|  |                     topology diff)                          |  |
 |  |                                                            |  |
 |  |  Event Journal (SQLite)    Resource Governor               |  |
+|  |                                                            |  |
+|  |  Peer Protocol (gRPC/mTLS, port 5950)                      |  |
+|  |  - LLDP-based auto-discovery                                |  |
+|  |  - Heartbeats, event sharing, finding gossip (TTL=3)        |  |
 |  +------------------------------------------------------------+  |
+|         |               |                |                       |
+|         | gRPC/mTLS     | gRPC/mTLS      | gRPC/mTLS             |
+|         v               v                v                       |
+|  [Peer Watchtower] [Peer Watchtower]  [Peer Watchtower]          |
 +------------------------------------------------------------------+
 ```
 
@@ -59,8 +71,15 @@ deviates from the baseline, operators see it immediately:
 port counters, interface state, BGP sessions, LLDP neighbors, optic DOM data,
 and filtered syslog entries.
 
-**Analyzers** compare collected data against learned baselines and flag
-statistical anomalies (p95/p99 deviation thresholds).
+**Analyzers** compare collected data against learned baselines, flag
+statistical anomalies (p95/p99 deviation thresholds), correlate local events
+with peer events on the same link, and detect topology changes.
+
+**Peer Protocol** exchanges heartbeats, events, topology fragments, and
+findings between Watchtower instances on neighboring switches. Peers are
+auto-discovered from LLDP data. Findings propagate via TTL-limited gossip
+(max 3 hops). mTLS is mandatory; if certificates are missing, the peer
+protocol disables gracefully (local-only mode).
 
 **Findings** are emitted to syslog (`tag: watchtower`, `facility: LOG_LOCAL4`)
 and written to the login banner file.
@@ -88,7 +107,7 @@ cd sonic-watchtower
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-python -m pytest tests/ -v    # 132 tests
+python -m pytest tests/ -v    # 239 tests
 ```
 
 ## Demo Output
@@ -131,23 +150,25 @@ Nov 15 14:32:07 switch01 watchtower[1234]: [WARNING] Ethernet48 rx_errors: 1847 
 
 ## Project Status
 
-**Phase 1 (Foundation) is complete.** Watchtower runs as a local observer with
-anomaly detection, baseline learning, a resource governor, syslog output, login
-banner, and a CLI. No LLM, no peer communication yet.
+**Phase 1 (Foundation) and Phase 2 (Peer Protocol) are complete.** 239 tests
+passing. Watchtower runs as a distributed observer with anomaly detection,
+baseline learning, peer-to-peer communication, cross-switch event correlation,
+a resource governor, syslog output, login banner, and a CLI.
 
 | Component | Status |
 |-----------|--------|
 | Collectors (port stats, interface, LLDP, BGP, optics, logs) | Done |
-| Analyzers (baseline comparison, anomaly detection) | Done |
+| Analyzers (baseline compare, peer correlate, topology diff) | Done |
 | Event journal (SQLite) | Done |
 | Resource governor (CPU/RAM self-policing) | Done |
 | Output (syslog + login banner) | Done |
-| CLI (`watchtower show`) | Done |
+| Peer protocol (gRPC/mTLS, discovery, gossip) | Done |
+| CLI (`watchtower show findings/topology/events/resources/baselines/peers`) | Done |
 
 ## Roadmap
 
 1. **Phase 1 -- Foundation** -- Local observer, anomaly detection, CLI (done)
-2. **Phase 2 -- Peer Protocol** -- gRPC/mTLS, LLDP-based peer discovery, cross-switch correlation
+2. **Phase 2 -- Peer Protocol** -- gRPC/mTLS, LLDP-based peer discovery, cross-switch correlation (done)
 3. **Phase 3 -- LLM Integration** -- Local quantized model for natural language findings and `watchtower ask`
 4. **Phase 4 -- Pre-Flight Simulation** -- `watchtower simulate` for change impact analysis
 5. **Phase 5 -- Central Watchtower** -- Hierarchy election, fleet-wide aggregation, REST API

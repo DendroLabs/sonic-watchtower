@@ -4,6 +4,7 @@ import pytest
 from click.testing import CliRunner
 
 from watchtower.cli.main import cli
+from watchtower.peer.state import PeerStateStore
 from watchtower.store.baselines import BaselineStore
 from watchtower.store.events import EventStore
 from watchtower.store.findings import FindingsStore
@@ -152,3 +153,69 @@ class TestShowBaselines:
         result = runner.invoke(cli, ["-c", config_file, "show", "baselines", "Ethernet99"])
         assert result.exit_code == 0
         assert "No baseline data" in result.output
+
+
+class TestShowPeers:
+    def test_show_peers(self, runner, tmp_path):
+        db_path = str(tmp_path / "peers.db")
+        journal = Journal(db_path)
+        peer_state = PeerStateStore(journal)
+        peer_state.update_heartbeat("spine-1", severity="ok", active_finding_count=0)
+        peer_state.update_heartbeat(
+            "switch-b", severity="warning", active_finding_count=2,
+            governor_state="throttled",
+        )
+        journal.close()
+
+        cfg = tmp_path / "peers.yml"
+        cfg.write_text(f"journal:\n  path: {db_path}\n")
+        result = runner.invoke(cli, ["-c", str(cfg), "show", "peers"])
+        assert result.exit_code == 0
+        assert "spine-1" in result.output
+        assert "switch-b" in result.output
+        assert "warning" in result.output
+
+    def test_show_peers_empty(self, runner, tmp_path):
+        db_path = str(tmp_path / "empty.db")
+        Journal(db_path).close()
+        cfg = tmp_path / "empty.yml"
+        cfg.write_text(f"journal:\n  path: {db_path}\n")
+        result = runner.invoke(cli, ["-c", str(cfg), "show", "peers"])
+        assert result.exit_code == 0
+        assert "No known peers" in result.output
+
+    def test_show_peers_in_help(self, runner):
+        result = runner.invoke(cli, ["show", "--help"])
+        assert "peers" in result.output
+
+
+class TestShowTopologyFabric:
+    def test_show_topology_fabric(self, runner, tmp_path):
+        db_path = str(tmp_path / "fabric.db")
+        journal = Journal(db_path)
+        topo = TopologyStore(journal)
+        topo.update_neighbor("Ethernet0", "spine-1", "Ethernet4")
+
+        peer_state = PeerStateStore(journal)
+        peer_state.update_peer_topology("switch-b", [
+            {"local_port": "Ethernet0", "remote_host": "spine-1",
+             "remote_port": "Ethernet8", "link_state": "up"},
+        ])
+        journal.close()
+
+        cfg = tmp_path / "fabric.yml"
+        cfg.write_text(f"journal:\n  path: {db_path}\n")
+        result = runner.invoke(cli, ["-c", str(cfg), "show", "topology", "--fabric"])
+        assert result.exit_code == 0
+        assert "Local topology" in result.output
+        assert "Peer topology" in result.output
+        assert "switch-b" in result.output
+
+    def test_show_topology_fabric_empty(self, runner, tmp_path):
+        db_path = str(tmp_path / "empty.db")
+        Journal(db_path).close()
+        cfg = tmp_path / "empty.yml"
+        cfg.write_text(f"journal:\n  path: {db_path}\n")
+        result = runner.invoke(cli, ["-c", str(cfg), "show", "topology", "--fabric"])
+        assert result.exit_code == 0
+        assert "No topology data" in result.output
